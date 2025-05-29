@@ -5,7 +5,7 @@ const db = require('./db'); // Doğrudan DB erişimi
 const { getAsilHaftalikNobetci, getAllNobetcilerFromDB } = require('./utils/calendarUtils'); // YENİ
 
 const botToken = process.env.TELEGRAM_BOT_TOKEN;
-const localApiBaseUrl = `http://localhost:${process.env.PORT || 3000}/api`;
+const localApiBaseUrl = `http://localhost:${process.env.PORT || 80}/api`;
 
 if (!botToken) {
     console.error("HATA: TELEGRAM_BOT_TOKEN ortam değişkeni ayarlanmamış. Bot başlatılamıyor.");
