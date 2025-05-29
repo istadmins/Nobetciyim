@@ -1,0 +1,131 @@
+/* public/login-style.css */
+
+body.login-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  margin: 0;
+  background-color: #68b96b; /* Ana yeşil arka plan */
+  font-family: 'Roboto', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.login-page .login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.login-page .login-box {
+  background-color: #ffffff;
+  padding: 40px 35px;
+  border-radius: 6px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 360px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+/* LOGIN Başlığı için stil (HTML'de h2.form-title varsa) */
+.login-page .login-box .form-title {
+  margin-top: 0;
+  margin-bottom: 30px;
+  color: #333;
+  font-size: 24px; /* Referans resme daha yakın bir boyut */
+  font-weight: 500; /* Orta kalınlıkta */
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.login-page .input-group {
+  margin-bottom: 20px;
+}
+
+.login-page .input-group input[type="text"],
+.login-page .input-group input[type="password"] {
+  width: 100%;
+  padding: 14px;
+  border: 1px solid #e0e0e0; /* Kenarlık */
+  border-radius: 4px;
+  box-sizing: border-box;
+  font-size: 15px;
+  color: #333;
+  background-color: #f7f7f7; /* Input arka planı */
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.login-page .input-group input[type="text"]::placeholder,
+.login-page .input-group input[type="password"]::placeholder {
+  color: #a0a0a0; /* Placeholder rengi */
+  opacity: 1;
+}
+
+.login-page .input-group input[type="text"]:focus,
+.login-page .input-group input[type="password"]:focus {
+  outline: none;
+  border-color: #68b96b; /* Odaklandığında ana yeşil renkle uyumlu kenarlık */
+  background-color: #ffffff;
+  box-shadow: 0 0 0 2px rgba(104, 185, 107, 0.2);
+}
+
+.login-page .login-button {
+  width: 100%;
+  padding: 14px;
+  background-color: #5cb85c; /* Buton için biraz daha canlı bir yeşil */
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  transition: background-color 0.2s ease-in-out;
+  margin-top: 10px;
+}
+
+.login-page .login-button:hover {
+  background-color: #4cae4c;
+}
+
+.login-page .message-area {
+    padding: 10px 12px;
+    border-radius: 4px;
+    margin-top: 15px;
+    font-size: 13px;
+    text-align: center;
+    border-width: 1px;
+    border-style: solid;
+}
+
+.login-page .error-message {
+    color: #d32f2f;
+    background-color: #ffebee;
+    border-color: #ef9a9a;
+}
+
+.login-page .success-message {
+    color: #2e7d32;
+    background-color: #e8f5e9;
+    border-color: #a5d6a7;
+}
+
+.login-page .extra-links {
+  margin-top: 25px;
+  font-size: 13px;
+}
+
+.login-page .extra-links a.forgot-password-link {
+  color: #555; /* Form içindeki link için daha sade bir renk */
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.login-page .extra-links a.forgot-password-link:hover {
+  color: #333;
+  text-decoration: underline;
+}
