@@ -6,7 +6,7 @@ const bcrypt = require('bcryptjs');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 
-// Mevcut /login route'unuzun burada olduğunu varsayıyorum
+// Mevcut /login route'unuz
 router.post('/login', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ success: false, error: 'Eksik bilgi' });
@@ -30,7 +30,7 @@ router.post('/login', (req, res) => {
 });
 
 
-// YENİ ENDPOINT: Şifre sıfırlama isteğini başlat
+// Şifre sıfırlama isteğini başlat (Amazon SES SMTP ile)
 router.post('/initiate-password-reset', async (req, res) => {
     const { username } = req.body;
 
@@ -60,55 +60,50 @@ router.post('/initiate-password-reset', async (req, res) => {
                     return res.status(500).json({ success: false, message: 'Veritabanında şifre güncellenirken bir hata oluştu.' });
                 }
 
-                // Nodemailer transporter yapılandırması
-                let transporterOptions = {
-                    host: process.env.EMAIL_HOST,
-                    port: parseInt(process.env.EMAIL_PORT || "587"),
-                    secure: process.env.EMAIL_SECURE === 'true', // port 465 için true, diğerleri için genellikle false (STARTTLS)
-                    // tls: { // Geliştirme ortamında self-signed sertifikalar için gerekebilir
-                    //     rejectUnauthorized: false // CANLI ORTAMDA BUNU KULLANMAYIN!
+                // Konsolda .env değişkenlerini kontrol et (Sorun giderme için)
+                // console.log("ENV - SES_SMTP_HOST:", process.env.SES_SMTP_HOST);
+                // console.log("ENV - SES_SMTP_PORT:", process.env.SES_SMTP_PORT);
+                // console.log("ENV - SES_SMTP_USER:", process.env.SES_SMTP_USER);
+                // console.log("ENV - SES_SMTP_PASSWORD:", process.env.SES_SMTP_PASSWORD ? "Mevcut" : "Bulunamadı");
+                // console.log("ENV - EMAIL_FROM_SES_SMTP:", process.env.EMAIL_FROM_SES_SMTP);
+
+
+                // Nodemailer transporter yapılandırması (Amazon SES SMTP ile)
+                const transporter = nodemailer.createTransport({
+                    host: process.env.SES_SMTP_HOST,
+                    port: parseInt(process.env.SES_SMTP_PORT || "587"),
+                    secure: (process.env.SES_SMTP_PORT === '465'), // true for 465, false for other ports (TLS/STARTTLS)
+                    auth: {
+                        user: process.env.SES_SMTP_USER, // .env'deki SES_SMTP_USER
+                        pass: process.env.SES_SMTP_PASSWORD, // .env'deki SES_SMTP_PASSWORD
+                    },
+                    // Geliştirme ortamında self-signed sertifikalara izin vermek için tls ayarı gerekebilir
+                    // Ancak Amazon SES genellikle geçerli sertifikalar kullandığı için buna ihtiyaç olmamalıdır.
+                    // Eğer SSL/TLS bağlantı hataları alırsanız ve SES endpoint'i ile ilgili değilse,
+                    // ağınızdaki bir proxy/firewall buna neden oluyor olabilir.
+                    // tls: {
+                    //     rejectUnauthorized: process.env.NODE_ENV === 'production' // Canlıda true, geliştirme için false olabilir
                     // }
-                };
-
-                // Eğer .env dosyasında EMAIL_USER ve EMAIL_PASS tanımlıysa, auth bloğunu ekle
-                if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-                    transporterOptions.auth = {
-                        user: process.env.EMAIL_USER,
-                        pass: process.env.EMAIL_PASS,
-                    };
-                } else {
-                    console.log("EMAIL_USER ve EMAIL_PASS .env dosyasında bulunamadı. Kimlik doğrulamasız e-posta gönderme deneniyor.");
-                    // Bazı SMTP sunucuları, belirli IP'lerden gelen istekler için kimlik doğrulaması gerektirmeyebilir.
-                    // Veya kimlik doğrulama gerektirmeyen bir relay sunucusu kullanılıyor olabilir.
-                }
-                 if (process.env.NODE_ENV !== 'production' && transporterOptions.host && transporterOptions.host.includes('localhost')) {
-                    // Geliştirme ortamında ve localhost SMTP sunucusu kullanılıyorsa
-                    // self-signed sertifikalara izin ver
-                     transporterOptions.tls = {
-                         rejectUnauthorized: false
-                     };
-                 }
-
-
-                const transporter = nodemailer.createTransport(transporterOptions);
+                });
 
                 const mailOptions = {
-                    from: process.env.EMAIL_FROM || `"Uygulamanız" <default_sender@example.com>`, // .env'de EMAIL_FROM tanımlı değilse bir varsayılan kullan
+                    from: process.env.EMAIL_FROM_SES_SMTP, // .env'den gelen SES gönderici adresi
                     to: user.email,
-                    subject: 'Uygulama Şifre Sıfırlama',
-                    text: `Merhaba ${username},\n\nİsteğiniz üzerine şifreniz sıfırlanmıştır.\nYeni şifreniz: ${newPassword}\n\nLütfen giriş yaptıktan sonra şifrenizi güvenli bir şifre ile güncelleyiniz.\n\nBu isteği siz yapmadıysanız, lütfen bu e-postayı dikkate almayın.`,
-                    html: `<p>Merhaba ${username},</p><p>İsteğiniz üzerine şifreniz sıfırlanmıştır.</p><p>Yeni şifreniz: <strong>${newPassword}</strong></p><p>Lütfen giriş yaptıktan sonra şifrenizi güvenli bir şifre ile güncelleyiniz.</p><p>Bu isteği siz yapmadıysanız, lütfen bu e-postayı dikkate almayın.</p>`
+                    subject: 'Nobetciyim Uygulaması - Şifre Sıfırlama',
+                    text: `Merhaba ${username},\n\nİsteğiniz üzerine şifreniz sıfırlanmıştır.\nYeni şifreniz: ${newPassword}\n\nBu isteği siz yapmadıysanız, lütfen bu e-postayı dikkate almayın.`,
+                    html: `<p>Merhaba ${username},</p><p>İsteğiniz üzerine şifreniz sıfırlanmıştır.</p><p>Yeni şifreniz: <strong>${newPassword}</strong></p><p>Bu isteği siz yapmadıysanız, lütfen bu e-postayı dikkate almayın.</p>`
                 };
 
                 try {
+                    console.log("E-posta gönderilmeye çalışılıyor (SES SMTP)... Alıcı:", user.email, "Gönderici:", process.env.EMAIL_FROM_SES_SMTP);
                     await transporter.sendMail(mailOptions);
-                    console.log(`Şifre sıfırlama e-postası ${user.email} adresine gönderildi. Yeni şifre: ${newPassword}`);
+                    console.log(`Şifre sıfırlama e-postası ${user.email} adresine başarıyla gönderildi (SES SMTP). Yeni şifre: ${newPassword}`);
                     return res.json({ success: true, message: 'Yeni şifreniz, kayıtlı e-posta adresinize başarıyla gönderildi.' });
                 } catch (emailError) {
-                    console.error("Şifre sıfırlama - E-posta gönderilirken hata:", emailError);
-                    return res.status(500).json({ 
+                    console.error("Şifre sıfırlama - E-posta gönderilirken hata (SES SMTP):", emailError);
+                    return res.status(500).json({
                         success: false,
-                        message: `Şifreniz veritabanında güncellendi ancak e-posta gönderilirken bir sorun oluştu: ${emailError.message}. E-posta sunucu ayarlarınızı kontrol edin.`
+                        message: `Şifreniz veritabanında güncellendi ancak e-posta gönderilirken bir sorun oluştu: ${emailError.message}. Lütfen Amazon SES SMTP ayarlarınızı ve .env dosyanızı kontrol edin.`
                     });
                 }
             });
