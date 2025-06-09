@@ -1,4 +1,4 @@
-// node2/db.js
+// Nobetciyim/db.js
 const sqlite3 = require('sqlite3').verbose();
 const db = new sqlite3.Database('./nobet.db', (err) => {
   if (err) {
@@ -34,31 +34,27 @@ function initializeSchema() {
         is_aktif INTEGER DEFAULT 0,
         pay_edilen_kredi INTEGER DEFAULT 0,
         telegram_id TEXT DEFAULT NULL UNIQUE,
-        telefon_no TEXT DEFAULT NULL /* YENİ SÜTUN EKLENDİ */
+        telefon_no TEXT DEFAULT NULL
       )
     `, (err) => {
         if (err) console.error("Nobetciler tablo oluşturma hatası:", err.message);
         else {
             console.log("Nobetciler tablosu kontrol edildi/oluşturuldu.");
-            // Mevcut telegram_id sütun kontrolü
-            columnExists('Nobetciler', 'telegram_id', (err, exists) => {
-                if (err) return console.error("Nobetciler.telegram_id kontrol hatası:", err.message);
-                if (!exists) {
-                    db.run("ALTER TABLE Nobetciler ADD COLUMN telegram_id TEXT DEFAULT NULL UNIQUE", (alterErr) => {
-                        if (alterErr) console.error("Nobetciler tablosuna telegram_id eklenirken hata:", alterErr.message);
-                        else console.log("Nobetciler tablosuna telegram_id sütunu eklendi.");
-                    });
-                }
-            });
-            // Yeni telefon_no sütun kontrolü ve eklenmesi
-            columnExists('Nobetciler', 'telefon_no', (err, exists) => {
-                if (err) return console.error("Nobetciler.telefon_no kontrol hatası:", err.message);
-                if (!exists) {
-                    db.run("ALTER TABLE Nobetciler ADD COLUMN telefon_no TEXT DEFAULT NULL", (alterErr) => {
-                        if (alterErr) console.error("Nobetciler tablosuna telefon_no eklenirken hata:", alterErr.message);
-                        else console.log("Nobetciler tablosuna telefon_no sütunu eklendi.");
-                    });
-                }
+            const columnsToEnsure = [
+                { name: 'telegram_id', type: 'TEXT DEFAULT NULL UNIQUE' },
+                { name: 'telefon_no', type: 'TEXT DEFAULT NULL' },
+                { name: 'pay_edilen_kredi', type: 'INTEGER DEFAULT 0' }
+            ];
+            columnsToEnsure.forEach(column => {
+                columnExists('Nobetciler', column.name, (err, exists) => {
+                    if (err) return console.error(`Nobetciler.${column.name} kontrol hatası:`, err.message);
+                    if (!exists) {
+                        db.run(`ALTER TABLE Nobetciler ADD COLUMN ${column.name} ${column.type}`, (alterErr) => {
+                            if (alterErr) console.error(`Nobetciler tablosuna ${column.name} eklenirken hata:`, alterErr.message);
+                            else console.log(`Nobetciler tablosuna ${column.name} sütunu eklendi.`);
+                        });
+                    }
+                });
             });
         }
     });
@@ -69,7 +65,7 @@ function initializeSchema() {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         kural_adi TEXT NOT NULL,
         kredi INTEGER NOT NULL,
-        tarih TEXT,
+        tarih TEXT, -- YYYY-MM-DD formatında
         sabit_kural INTEGER DEFAULT 0,
         UNIQUE(kural_adi, tarih)
       )
@@ -85,20 +81,20 @@ function initializeSchema() {
         }
     });
 
-    // nobet_kredileri Tablosu
+    // nobet_kredileri Tablosu (Vardiya Saat Aralıkları)
     db.run(`
       CREATE TABLE IF NOT EXISTS nobet_kredileri (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         kredi_dakika INTEGER NOT NULL,
-        baslangic_saat TEXT NOT NULL,
-        bitis_saat TEXT NOT NULL,
+        baslangic_saat TEXT NOT NULL, -- HH:MM formatında
+        bitis_saat TEXT NOT NULL,   -- HH:MM formatında
         UNIQUE(baslangic_saat, bitis_saat)
       )
     `, (err) => {
         if(err) console.error("nobet_kredileri tablo oluşturma hatası:", err.message);
     });
 
-    // users Tablosu
+    // users Tablosu (Admin girişi için)
     db.run(`
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -111,31 +107,9 @@ function initializeSchema() {
       )
     `, (err) => {
         if(err) console.error("Users tablo oluşturma hatası:", err.message);
-        else {
-            console.log("Users tablosu kontrol edildi/oluşturuldu.");
-            const userColumnsToEnsure = [
-                { name: 'email', type: 'TEXT UNIQUE' },
-                { name: 'role', type: 'TEXT DEFAULT \'user\''},
-                { name: 'reset_password_token', type: 'TEXT' },
-                { name: 'reset_password_expires', type: 'INTEGER' }
-            ];
-            userColumnsToEnsure.forEach(column => {
-                columnExists('users', column.name, (err, exists) => {
-                    if (err) return console.error(`Users.${column.name} kontrol hatası:`, err.message);
-                    if (!exists) {
-                        const typeForAlter = column.type.split(' ')[0];
-                        const defaultValueClause = column.type.includes('DEFAULT') ? `DEFAULT ${column.type.split('DEFAULT ')[1]}` : '';
-                        db.run(`ALTER TABLE users ADD COLUMN ${column.name} ${typeForAlter} ${defaultValueClause}`, (alterErr) => {
-                            if (alterErr) console.error(`Users tablosuna '${column.name}' sütunu eklenirken hata:`, alterErr.message);
-                            else console.log(`Users tablosuna '${column.name}' sütunu eklendi.`);
-                        });
-                    }
-                });
-            });
-        }
     });
 
-    // takvim_aciklamalari Tablosu
+    // takvim_aciklamalari Tablosu (Manuel atamalar ve notlar için)
     db.run(`
       CREATE TABLE IF NOT EXISTS takvim_aciklamalari (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -147,20 +121,9 @@ function initializeSchema() {
       )
     `, (err) => {
         if (err) console.error("takvim_aciklamalari tablo oluşturma hatası:", err.message);
-        else {
-            columnExists('takvim_aciklamalari', 'nobetci_id_override', (err, exists) => {
-                if (err) return console.error("takvim_aciklamalari.nobetci_id_override kontrol hatası:", err.message);
-                if (!exists) {
-                    db.run("ALTER TABLE takvim_aciklamalari ADD COLUMN nobetci_id_override INTEGER DEFAULT NULL REFERENCES Nobetciler(id) ON DELETE SET NULL", (alterErr) => {
-                        if (alterErr) console.error("takvim_aciklamalari tablosuna nobetci_id_override eklenirken hata:", alterErr.message);
-                        else console.log("takvim_aciklamalari tablosuna nobetci_id_override sütunu eklendi.");
-                    });
-                }
-            });
-        }
     });
     
-    // uygulama_ayarlari Tablosu
+    // uygulama_ayarlari Tablosu (Yeniden sıralama, Telegram ayarları vb. için)
     db.run(`
       CREATE TABLE IF NOT EXISTS uygulama_ayarlari (
         ayar_key TEXT PRIMARY KEY,
@@ -169,13 +132,125 @@ function initializeSchema() {
     `, function(err) {
       if (err) console.error("uygulama_ayarlari tablosu oluşturulurken hata:", err.message);
       else {
-        const resortConfigDefault = JSON.stringify({ aktif: false, baslangicYili: 0, baslangicHaftasi: 0, baslangicNobetciIndex: 0 });
-        db.run("INSERT OR IGNORE INTO uygulama_ayarlari (ayar_key, ayar_value) VALUES (?, ?)",
-            ['resort_config', resortConfigDefault]);
+        const defaultSettings = [
+            { key: 'resort_config', value: JSON.stringify({ aktif: false, baslangicYili: 0, baslangicHaftasi: 0, baslangicNobetciIndex: 0 }) },
+            { key: 'telegram_group_id', value: null }, // Burayı kendi grup ID'nizle doldurun veya arayüzden ayarlanabilir yapın
+            { key: 'is_telegram_active', value: 'false' } // Varsayılan olarak false
+        ];
+        defaultSettings.forEach(setting => {
+            db.run("INSERT OR IGNORE INTO uygulama_ayarlari (ayar_key, ayar_value) VALUES (?, ?)",
+                [setting.key, setting.value]);
+        });
       }
     });
     console.log("Veritabanı şeması başlatma tamamlandı.");
   });
 }
+
+
+// --- Yardımcı Fonksiyonlar ---
+
+db.getShiftTimeRanges = function() {
+    return new Promise((resolve, reject) => {
+        this.all('SELECT id, kredi_dakika, baslangic_saat, bitis_saat FROM nobet_kredileri ORDER BY baslangic_saat ASC', [], (err, rows) => {
+            if (err) { console.error("DB Error (getShiftTimeRanges):", err.message); reject(err); }
+            else { resolve(rows); }
+        });
+    });
+};
+
+db.setAktifNobetci = function(nobetciId) {
+    return new Promise((resolve, reject) => {
+        this.serialize(() => {
+            this.run("UPDATE Nobetciler SET is_aktif = 0", (err) => {
+                if (err) { console.error("DB Error (setAktifNobetci - step 1):", err.message); return reject(err); }
+                if (nobetciId !== null && typeof nobetciId !== 'undefined') {
+                    this.run("UPDATE Nobetciler SET is_aktif = 1 WHERE id = ?", [nobetciId], function(errUpdate) {
+                        if (errUpdate) { console.error("DB Error (setAktifNobetci - step 2):", errUpdate.message); return reject(errUpdate); }
+                        resolve();
+                    });
+                } else {
+                    resolve();
+                }
+            });
+        });
+    });
+};
+
+db.getAktifNobetci = function() {
+    return new Promise((resolve, reject) => {
+        this.get("SELECT id, name, kredi, telegram_id, is_aktif FROM Nobetciler WHERE is_aktif = 1", [], (err, row) => {
+            if (err) { console.error("DB Error (getAktifNobetci):", err.message); reject(err); }
+            else { resolve(row); }
+        });
+    });
+};
+
+db.getNobetciById = function(id) {
+     return new Promise((resolve, reject) => {
+        this.get("SELECT id, name, kredi, is_aktif, telegram_id, telefon_no, pay_edilen_kredi FROM Nobetciler WHERE id = ?", [id], (err, row) => {
+            if (err) { console.error(`DB Error (getNobetciById - ID: ${id}):`, err.message); reject(err); }
+            else { resolve(row); }
+        });
+    });
+};
+
+db.getAllKrediKurallari = function() {
+     return new Promise((resolve, reject) => {
+        this.all("SELECT id, kural_adi, kredi, tarih, sabit_kural FROM kredi_kurallari", [], (err, rows) => {
+            if (err) { console.error("DB Error (getAllKrediKurallari):", err.message); reject(err); }
+            else { resolve(rows); }
+        });
+    });
+};
+
+db.updateNobetciKredi = function(nobetciId, yeniKredi) {
+    return new Promise((resolve, reject) => {
+        this.run("UPDATE Nobetciler SET kredi = ? WHERE id = ?", [yeniKredi, nobetciId], function(err) {
+            if (err) { console.error(`DB Error (updateNobetciKredi - ID: ${nobetciId}):`, err.message); reject(err); }
+            else { resolve(); }
+        });
+    });
+};
+
+db.getDutyOverride = function(yil, hafta) {
+    return new Promise((resolve, reject) => {
+        const sql = `
+            SELECT ta.nobetci_id_override, n.name as nobetci_adi_override
+            FROM takvim_aciklamalari ta
+            LEFT JOIN Nobetciler n ON n.id = ta.nobetci_id_override
+            WHERE ta.yil = ? AND ta.hafta = ?
+        `;
+        this.get(sql, [yil, hafta], (err, row) => {
+            if (err) {
+                console.error(`DB Error (getDutyOverride - ${yil}/${hafta}):`, err.message);
+                reject(err);
+            } else {
+                resolve(row);
+            }
+        });
+    });
+};
+
+db.getSettings = function() {
+    return new Promise((resolve, reject) => {
+        this.all("SELECT ayar_key, ayar_value FROM uygulama_ayarlari", [], (err, rows) => {
+            if (err) {
+                console.error("DB Error (getSettings):", err.message);
+                reject(err);
+            } else {
+                const settings = {};
+                rows.forEach(row => {
+                    if (row.ayar_key === 'is_telegram_active') {
+                        settings[row.ayar_key] = (row.ayar_value === 'true');
+                    } else {
+                        settings[row.ayar_key] = row.ayar_value;
+                    }
+                });
+                resolve(settings);
+            }
+        });
+    });
+};
 
 module.exports = db;

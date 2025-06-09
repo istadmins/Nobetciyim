@@ -1,17 +1,19 @@
-// node2/utils/calendarUtils.js
-const db = require('../db'); // Veritabanı bağlantısı
+// Nobetciyim/utils/calendarUtils.js
+const db = require('../db');
 
 /**
  * Belirtilen tarihin yılın kaçıncı haftası olduğunu döndürür (ISO 8601'e yakın).
  * Pazartesi haftanın ilk günü kabul edilir.
- * Kaynak: cron-jobs.js dosyasından alınmıştır.
  * @param {Date} date - Tarih objesi
  * @returns {number} Yılın haftası
  */
 function getWeekOfYear(date) {
     const target = new Date(date.valueOf());
-    const dayNr = (date.getDay() + 6) % 7; // Pazartesi = 0 ... Pazar = 6
-    target.setDate(target.getDate() - dayNr + 3); // Haftanın Perşembesine git
+    target.setHours(0, 0, 0, 0); // Saati sıfırla, sadece tarihle çalış
+    // Pazartesi haftanın ilk günü (getDay: Pazar=0, Pzt=1.. Cts=6)
+    // ISO 8601'e göre: Pazartesi=1..Pazar=7. Bizim için Pazartesi=0.
+    const dayNr = (target.getDay() + 6) % 7; 
+    target.setDate(target.getDate() - dayNr + 3); // Haftanın Perşembesine git (ISO 8601 kuralı)
     const firstThursday = target.valueOf();
     target.setMonth(0, 1); // Yılın ilk gününe git
     if (target.getDay() !== 4) { // Eğer ilk gün Perşembe değilse, yılın ilk Perşembesine git
@@ -21,7 +23,7 @@ function getWeekOfYear(date) {
 }
 
 /**
- * Veritabanından tüm nöbetçileri çeker.
+ * Veritabanından tüm nöbetçileri çeker (ID'ye göre sıralı).
  * @returns {Promise<Array<Object>>} Nöbetçi listesi [{id, name, telegram_id}, ...]
  */
 async function getAllNobetcilerFromDB() {
@@ -43,21 +45,24 @@ async function getAllNobetcilerFromDB() {
  */
 async function getResortConfigFromDB() {
     return new Promise((resolve, reject) => {
+        // db.getSettings() fonksiyonu zaten uygulama_ayarlari tablosunu okuyor.
+        // Onu kullanabiliriz veya burada direkt sorgu yapabiliriz.
+        // Eğer db.js'de getSettings yoksa bu direkt sorgu kalabilir.
+        // Varsa, db.getSettings().then(settings => resolve(settings.resort_config || default_config))
         db.get("SELECT ayar_value FROM uygulama_ayarlari WHERE ayar_key = 'resort_config'", [], (err, row) => {
+            const defaultConfig = { aktif: false, baslangicYili: 0, baslangicHaftasi: 0, baslangicNobetciIndex: 0 };
             if (err) {
                 console.error("DB Error (getResortConfigFromDB):", err.message);
-                reject(err);
+                reject(err); // Hata durumunda reject et
             } else if (row && row.ayar_value) {
                 try {
                     resolve(JSON.parse(row.ayar_value));
                 } catch (parseError) {
                     console.error("JSON Parse Error (getResortConfigFromDB):", parseError.message);
-                    // Bozuk veri durumunda varsayılanı döndür
-                    resolve({ aktif: false, baslangicYili: 0, baslangicHaftasi: 0, baslangicNobetciIndex: 0 });
+                    resolve(defaultConfig); // Bozuk veri durumunda varsayılanı döndür
                 }
             } else {
-                // Ayar bulunamazsa varsayılanı döndür
-                resolve({ aktif: false, baslangicYili: 0, baslangicHaftasi: 0, baslangicNobetciIndex: 0 });
+                resolve(defaultConfig); // Ayar bulunamazsa varsayılanı döndür
             }
         });
     });
@@ -76,20 +81,18 @@ async function getAsilHaftalikNobetci(date) {
     const haftaNo = getWeekOfYear(date);
 
     try {
-        // 1. Takvimde manuel override var mı kontrol et
-        const override = await new Promise((resolve, reject) => {
-            db.get("SELECT ta.nobetci_id_override, n.name, n.telegram_id FROM takvim_aciklamalari ta JOIN Nobetciler n ON n.id = ta.nobetci_id_override WHERE ta.yil = ? AND ta.hafta = ?", [yil, haftaNo], (err, row) => {
-                if (err) reject(err);
-                else resolve(row);
-            });
-        });
+        const override = await db.getDutyOverride(yil, haftaNo); // db.js'deki fonksiyonu kullanıyoruz
 
         if (override && typeof override.nobetci_id_override === 'number') {
-            console.log(`[getAsilHaftalikNobetci] Override bulundu: Yıl ${yil}, Hafta ${haftaNo} -> ${override.name} (ID: ${override.nobetci_id_override})`);
-            return { id: override.nobetci_id_override, name: override.name, telegram_id: override.telegram_id };
+            // Manuel atanan nöbetçinin diğer bilgilerini de (telegram_id) çekmek iyi olabilir.
+            // getDutyOverride zaten Nobetciler tablosuyla join yapıp adı getiriyor.
+            // Eğer telegram_id de gerekirse, o sorguya eklenebilir.
+            // Şimdilik sadece ID ve adı varsayıyoruz.
+            // console.log(`[getAsilHaftalikNobetci] Override bulundu: Yıl ${yil}, Hafta ${haftaNo} -> ${override.nobetci_adi_override} (ID: ${override.nobetci_id_override})`);
+            const overriddenNobetci = await db.getNobetciById(override.nobetci_id_override);
+            return overriddenNobetci ? { id: overriddenNobetci.id, name: overriddenNobetci.name, telegram_id: overriddenNobetci.telegram_id } : null;
         }
 
-        // 2. Override yoksa, sıralama mantığını kullan
         const nobetciler = await getAllNobetcilerFromDB();
         if (!nobetciler || nobetciler.length === 0) {
             console.warn("[getAsilHaftalikNobetci] Sistemde kayıtlı nöbetçi bulunamadı.");
@@ -97,56 +100,33 @@ async function getAsilHaftalikNobetci(date) {
         }
 
         const resortConfig = await getResortConfigFromDB();
-        let nobetciSiraIndex;
+        let nobetciSiraIndex = 0; // Varsayılan eğer hesaplanamazsa
 
-        if (resortConfig.aktif &&
-            (yil > resortConfig.baslangicYili ||
-             (yil === resortConfig.baslangicYili && haftaNo >= resortConfig.baslangicHaftasi))) {
-            // Yeniden sıralama aktif ve tarih kapsamında
-            let haftalarFarki = 0;
-            if (yil === resortConfig.baslangicYili) {
-                haftalarFarki = haftaNo - resortConfig.baslangicHaftasi;
-            } else {
-                // Başlangıç yılındaki son haftayı bul (28 Aralık her zaman yılın son haftasındadır)
-                let baslangicYilindakiSonHafta = getWeekOfYear(new Date(resortConfig.baslangicYili, 11, 28));
-                haftalarFarki = baslangicYilindakiSonHafta - resortConfig.baslangicHaftasi;
-
-                for (let y = resortConfig.baslangicYili + 1; y < yil; y++) {
-                    haftalarFarki += getWeekOfYear(new Date(y, 11, 28)); // O yılın toplam hafta sayısı
+        if (nobetciler.length > 0) { // Nöbetçi varsa sıralama yap
+            if (resortConfig.aktif &&
+                (yil > resortConfig.baslangicYili ||
+                 (yil === resortConfig.baslangicYili && haftaNo >= resortConfig.baslangicHaftasi))) {
+                let haftalarFarki = 0;
+                if (yil === resortConfig.baslangicYili) {
+                    haftalarFarki = haftaNo - resortConfig.baslangicHaftasi;
+                } else {
+                    let baslangicYilindakiSonHafta = getWeekOfYear(new Date(resortConfig.baslangicYili, 11, 28));
+                    haftalarFarki = baslangicYilindakiSonHafta - resortConfig.baslangicHaftasi;
+                    for (let y = resortConfig.baslangicYili + 1; y < yil; y++) {
+                        haftalarFarki += getWeekOfYear(new Date(y, 11, 28));
+                    }
+                    haftalarFarki += haftaNo;
                 }
-                haftalarFarki += haftaNo; // Mevcut yılın hafta numarası
+                nobetciSiraIndex = (resortConfig.baslangicNobetciIndex + haftalarFarki) % nobetciler.length;
+            } else {
+                const yearStartDateForWeekCalc = new Date(yil, 0, 1);
+                const weeksOffset = getWeekOfYear(yearStartDateForWeekCalc);
+                nobetciSiraIndex = (haftaNo - weeksOffset + nobetciler.length) % nobetciler.length;
             }
-            nobetciSiraIndex = (resortConfig.baslangicNobetciIndex + haftalarFarki) % nobetciler.length;
-            console.log(`[getAsilHaftalikNobetci] Yeniden sıralama kullanıldı. Fark: ${haftalarFarki}, Index: ${nobetciSiraIndex}`);
-
-        } else {
-            // Standart sıralama (calendar.js ve cron-jobs.js ile benzer mantık)
-            // Yılın ilk gününün hafta numarasını bul
-            const yearStartDateForWeekCalc = new Date(yil, 0, 1);
-            // Pazartesi'yi haftanın ilk günü kabul eden bir getWeekOfYear kullandığımız için,
-            // yılın ilk gününün bulunduğu haftayı direkt çıkarabiliriz.
-            // calendar.js'deki mantık: (haftaNo - yılınİlkHaftaNo + 1) -1
-            // cron-jobs.js'deki mantık: (weeksSinceYearStart - 1)
-            // weeksSinceYearStart = currentWeekNumber - getWeekOfYearForCron(yearStartDateForWeekCalc) + 1;
-            // nobetciSiraIndex = (weeksSinceYearStart - 1 + nobetciler.length) % nobetciler.length;
-
-            const weeksOffset = getWeekOfYear(yearStartDateForWeekCalc);
-            // Haftalar 1'den başladığı için ve index 0'dan başladığı için ayarlama
-            nobetciSiraIndex = (haftaNo - weeksOffset + nobetciler.length) % nobetciler.length;
-
-
-            // Alternatif ve daha basit olabilecek bir standart sıralama:
-            // Her yılın 1. haftasında ilk nöbetçiden başla.
-            // nobetciSiraIndex = (haftaNo - 1 + nobetciler.length) % nobetciler.length;
-            // Bu, `calendar.js`'deki `weeksSinceYearStart` mantığına daha yakın:
-            // const weeksSinceYearStart = haftaNo - getWeekOfYear(new Date(yil, 0, 1)) +1; (getWeekOfYear, 1 tabanlı)
-            // nobetciSiraIndex = (weeksSinceYearStart -1 + nobetciler.length) % nobetciler.length;
-             console.log(`[getAsilHaftalikNobetci] Standart sıralama kullanıldı. HaftaNo: ${haftaNo}, Index: ${nobetciSiraIndex}`);
         }
 
         const asilNobetci = nobetciler[nobetciSiraIndex];
         if (asilNobetci) {
-            console.log(`[getAsilHaftalikNobetci] Belirlenen asıl nöbetçi: ${asilNobetci.name} (ID: ${asilNobetci.id})`);
             return { id: asilNobetci.id, name: asilNobetci.name, telegram_id: asilNobetci.telegram_id };
         } else {
             console.warn(`[getAsilHaftalikNobetci] Asıl nöbetçi hesaplanamadı. Index: ${nobetciSiraIndex}, Nöbetçi Sayısı: ${nobetciler.length}`);
@@ -154,7 +134,7 @@ async function getAsilHaftalikNobetci(date) {
         }
 
     } catch (error) {
-        console.error("[getAsilHaftalikNobetci] Fonksiyonunda hata:", error.message);
+        console.error("[getAsilHaftalikNobetci] Fonksiyonunda hata:", error.message, error.stack);
         return null;
     }
 }
@@ -162,5 +142,5 @@ async function getAsilHaftalikNobetci(date) {
 module.exports = {
     getWeekOfYear,
     getAsilHaftalikNobetci,
-    getAllNobetcilerFromDB // Bunu da export edelim, telegram_bot_handler'da gerekebilir
+    getAllNobetcilerFromDB // Telegram botu için de gerekebilir
 };

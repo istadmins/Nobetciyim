@@ -277,7 +277,7 @@ cron.schedule('* * * * *', async () => {
 }, { timezone: "Europe/Istanbul" });
 
 
-// Pazartesi 07:00 Cron Job'u (DÜZELTİLMİŞ)
+// Pazartesi 07:00 Cron Job'u
 cron.schedule('0 7 * * 1', async () => {
     const simdi = new Date();
     console.log(`[Pzt 07:00 Cron] [${simdi.toLocaleString('tr-TR', {timeZone: 'Europe/Istanbul'})}] Haftalık ana nöbetçi belirleme çalışıyor...`);
@@ -291,56 +291,49 @@ cron.schedule('0 7 * * 1', async () => {
 
         logDebug("[Pzt 07:00 Cron] Anlık .env Telegram Ayarları:", { telegramChatId: envTelegramChatIdPzt, isTelegramActive: envIsTelegramActivePzt });
         
-        let hedefNobetci = null;
-        let atamaTuru = "Haftalık"; // Bildirim mesajı için
-
         if (override && override.nobetci_id_override !== null) {
-            console.log(`[Pzt 07:00 Cron] Hafta ${currentWeek}/${currentYear} için manuel atama (${override.nobetci_adi_override || 'ID: '+override.nobetci_id_override}) uygulanacak.`);
-            const manuelNobetciDetay = await db.getNobetciById(override.nobetci_id_override);
-            if (manuelNobetciDetay) {
-                hedefNobetci = { id: manuelNobetciDetay.id, name: manuelNobetciDetay.name, telegram_id: manuelNobetciDetay.telegram_id };
-                atamaTuru = "Haftalık (Manuel Atama)";
-            } else {
-                 console.warn(`[Pzt 07:00 Cron] Manuel atama için nöbetçi ID'si (${override.nobetci_id_override}) veritabanında bulunamadı.`);
-                 return; // Hedef bulunamadıysa devam etme
-            }
-        } else {
-            console.log(`[Pzt 07:00 Cron] Otomatik haftalık nöbetçi belirleniyor.`);
-            hedefNobetci = await getAsilHaftalikNobetci(simdi);
-            atamaTuru = "Haftalık (Otomatik)";
-        }
-        
-        if (hedefNobetci && hedefNobetci.id) {
-            const aktifSuAn = await db.getAktifNobetci();
-            
-            // Eğer mevcut aktif nöbetçi, yeni haftanın hedefi ile aynı değilse, değiştir.
-            if (!aktifSuAn || aktifSuAn.id !== hedefNobetci.id) {
-                console.log(`[Pzt 07:00 Cron] Aktif nöbetçi değiştiriliyor. Mevcut: ${aktifSuAn ? aktifSuAn.name : 'Yok'}, Yeni: ${hedefNobetci.name}`);
-                await db.setAktifNobetci(hedefNobetci.id);
-                
-                const message = `${atamaTuru} Değişimi:\nAktif Nöbetçi: *${hedefNobetci.name}*`;
-                console.log(`[Pzt 07:00 Cron] Nöbetçi ayarlandı: ${hedefNobetci.name}.`);
-                
+            console.log(`[Pzt 07:00 Cron] Hafta ${currentWeek}/${currentYear} için manuel atama (${override.nobetci_adi_override || 'ID: '+override.nobetci_id_override}) var.`);
+            const aktifManuel = await db.getAktifNobetci();
+            if(!aktifManuel || aktifManuel.id !== override.nobetci_id_override) {
+                await db.setAktifNobetci(override.nobetci_id_override);
+                // Sadeleştirilmiş mesaj formatı
+                const message = `Haftalık Nöbetçi (Manuel Atama):\nAktif Nöbetçi: *${override.nobetci_adi_override || 'ID: '+override.nobetci_id_override}*`;
+                console.log(`[Pzt 07:00 Cron] Nöbetçi ayarlandı: ${override.nobetci_adi_override || 'ID: '+override.nobetci_id_override}.`);
                 if (envIsTelegramActivePzt && envTelegramChatIdPzt) {
-                    await sendTelegramMessageToGroup(envTelegramChatIdPzt, message);
-                    console.log(`[Pzt 07:00 Cron] Telegram mesajı ${envTelegramChatIdPzt} ID'sine gönderildi.`);
+                   await sendTelegramMessageToGroup(envTelegramChatIdPzt, message);
+                   console.log(`[Pzt 07:00 Cron] Telegram mesajı ${envTelegramChatIdPzt} ID'sine gönderildi.`);
                 } else {
-                    logDebug(`[Pzt 07:00 Cron] Telegram bot token veya chat ID .env'de eksik/yanlış. Mesaj gönderilmedi.`);
+                   logDebug(`[Pzt 07:00 Cron] Telegram bot token veya chat ID .env'de eksik/yanlış. Mesaj gönderilmedi.`);
+                }
+            }
+            return;
+        }
+
+        const haftaninAsilNobetci = await getAsilHaftalikNobetci(simdi);
+        if (haftaninAsilNobetci && haftaninAsilNobetci.id) {
+            const shiftTimeRanges = await db.getShiftTimeRanges();
+            if (!shiftTimeRanges || shiftTimeRanges.length < 2) {
+                const aktifSuAn = await db.getAktifNobetci();
+                if (!aktifSuAn || aktifSuAn.id !== haftaninAsilNobetci.id) {
+                    await db.setAktifNobetci(haftaninAsilNobetci.id);
+                    // Sadeleştirilmiş mesaj formatı
+                    const message = `Haftalık Nöbetçi Değişimi:\nAktif Nöbetçi: *${haftaninAsilNobetci.name}*`;
+                    console.log(`[Pzt 07:00 Cron] Nöbetçi ayarlandı: ${haftaninAsilNobetci.name}.`);
+                    if (envIsTelegramActivePzt && envTelegramChatIdPzt) {
+                        await sendTelegramMessageToGroup(envTelegramChatIdPzt, message);
+                        console.log(`[Pzt 07:00 Cron] Telegram mesajı ${envTelegramChatIdPzt} ID'sine gönderildi.`);
+                    } else {
+                        logDebug(`[Pzt 07:00 Cron] Telegram bot token veya chat ID .env'de eksik/yanlış. Mesaj gönderilmedi.`);
+                    }
+                } else {
+                    logDebug(`[Pzt 07:00 Cron] ${haftaninAsilNobetci.name} zaten aktif nöbetçi (tek vardiya modu).`);
                 }
             } else {
-                logDebug(`[Pzt 07:00 Cron] ${hedefNobetci.name} zaten aktif nöbetçi. Değişiklik yapılmadı.`);
+                 logDebug(`[Pzt 07:00 Cron] İki vardiya modu aktif. Bu haftanın asıl nöbetçisi ${haftaninAsilNobetci.name}. Vardiya değişim job'ları ilgili atamayı yapacaktır/yapmıştır.`);
             }
-            
-            // İki vardiya modu için ek loglama
-            const shiftTimeRanges = await db.getShiftTimeRanges();
-            if (shiftTimeRanges && shiftTimeRanges.length >= 2) {
-                logDebug(`[Pzt 07:00 Cron] Bilgi: İki vardiya modu aktif. Haftalık ana nöbetçi ${hedefNobetci.name} olarak ayarlandı. Gün içi değişimler vardiya job'ları tarafından yönetilecek (eğer tatil değilse).`);
-            }
-
         } else {
-            console.warn("[Pzt 07:00 Cron] Bu hafta için hedef nöbetçi belirlenemedi (ne manuel ne de otomatik).");
+            console.warn("[Pzt 07:00 Cron] Bu hafta için asıl nöbetçi belirlenemedi.");
         }
-
     } catch (error) {
         console.error("[Pzt 07:00 Cron] Haftalık nöbetçi belirleme görevinde hata:", error.message, error.stack);
     }
