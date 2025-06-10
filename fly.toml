@@ -9,7 +9,18 @@ primary_region = 'ams'
 [build]
 
 [env]
-  PORT = '8080'
+  PORT = '80'
+  TELEGRAM_BOT_TOKEN=7020716749:AAE-NQVatgV3RuhNUg5_wM7qToBh2KXraKk
+  TELEGRAM_CHAT_ID=469907938
+  JWT_SECRET=benimcokgizlisifrem123
+  CRON_DEBUG_LOGGING=true  # Detaylı loglar için true, kapatmak için false
+
+  # Amazon SES SMTP Ayarları
+  SES_SMTP_HOST=email-smtp.eu-north-1.amazonaws.com # SES Konsolundaki SMTP sunucu adresiniz
+  SES_SMTP_PORT=587                                 # Genellikle 587 (TLS için) veya 465 (SSL için)
+  SES_SMTP_USER=AKIA2QPBE4X3BKE4MWOW              # SES konsolundan oluşturduğunuz SMTP kullanıcı adı
+  SES_SMTP_PASSWORD=BF1PeItyVt3RfIvNRTF5NHCPKI4D4WIrBAIs1hKtgFJy          # SES konsolundan oluşturduğunuz SMTP şifresi
+  EMAIL_FROM_SES_SMTP="Nobetciyim Uygulamasi <noreply@nobetciyim.cfd>" # SES'te doğruladığınız gönderici e-posta adresi
 
 [http_service]
   internal_port = 80
