@@ -17,7 +17,7 @@ primary_region = 'ams'
   auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 0
-  processes = ['app']
+  processes = ['node app.js']
 
 [[vm]]
   memory = '1gb'
