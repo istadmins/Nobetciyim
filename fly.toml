@@ -31,3 +31,8 @@ primary_region = 'fra'
     port = 80
     timeout = "10s"
     type = "tcp"
+	
+[mounts]
+	source = "vnobetci"
+	destination = "/home/node"
+
