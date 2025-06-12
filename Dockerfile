@@ -3,7 +3,7 @@ FROM node:current-alpine3.21
 WORKDIR /data
 
 # Gerekli derleyici ve araçları yükle
-RUN apk add --no-cache make gcc g++ python3
+RUN  apk upgrade --no-cache && apk add --no-cache make gcc g++ python3
 
 # Paketleri yükle
 RUN npm install express bcryptjs jsonwebtoken sqlite3 dotenv node-telegram-bot-api axios nodemailer node-cron
