@@ -7,7 +7,7 @@ FROM node:${NODE_VERSION}-slim as base
 LABEL fly_launch_runtime="NodeJS"
 
 # NodeJS app lives here
-WORKDIR /home/node
+WORKDIR /app
 
 # Set production environment
 ENV NODE_ENV=production
@@ -22,7 +22,7 @@ RUN apt-get update -qq && \
 
 # Install node modules
 COPY --link package.json package-lock.json .
-RUN npm install express bcryptjs jsonwebtoken sqlite3 dotenv node-telegram-bot-api axios nodemailer
+RUN npm install
 
 # Copy application code
 COPY --link . .
@@ -36,8 +36,4 @@ FROM base
 COPY --from=build /app /app
 
 # Start the server by default, this can be overwritten at runtime
-ENV TZ="Europe/Istanbul"
-
-EXPOSE 80
-
-CMD ["node", "app.js"]
+CMD [ "npm", "run", "start" ]
