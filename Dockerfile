@@ -1,41 +1,21 @@
-# syntax = docker/dockerfile:1
+FROM node:current-alpine3.21
 
-# Adjust NODE_VERSION as desired
-ARG NODE_VERSION=20.18.0
-FROM node:${NODE_VERSION}-slim as base
-
-LABEL fly_launch_runtime="NodeJS"
-
-# NodeJS app lives here
 WORKDIR /home/node
 
-# Set production environment
-ENV NODE_ENV=production
+# Gerekli derleyici ve araçları yükle
+RUN apk add --no-cache make gcc g++ python3
 
-
-# Throw-away build stage to reduce size of final image
-FROM base as build
-
-# Install packages needed to build node modules
-RUN apt-get update -qq && \
-    apt-get install -y python-is-python3 pkg-config build-essential 
-
-# Install node modules
-COPY --link package.json package-lock.json .
+# Paketleri yükle
 RUN npm install express bcryptjs jsonwebtoken sqlite3 dotenv node-telegram-bot-api axios nodemailer
 
-# Copy application code
-COPY --link . .
+COPY package*.json ./
 
 
+# (Opsiyonel) Derleyici araçları kaldır, imajı küçült
+RUN apk del make gcc g++ python3
 
-# Final stage for app image
-FROM base
+COPY . .
 
-# Copy built application
-COPY --from=build /app /app
-
-# Start the server by default, this can be overwritten at runtime
 ENV TZ="Europe/Istanbul"
 
 EXPOSE 80
