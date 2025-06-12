@@ -23,3 +23,11 @@ primary_region = 'fra'
 
 [[vm]]
   size = 'shared-cpu-1x'
+  
+[checks]
+  [checks.name_of_your_tcp_check]
+    grace_period = "30s"
+    interval = "15s"
+    port = 80
+    timeout = "10s"
+    type = "tcp"
