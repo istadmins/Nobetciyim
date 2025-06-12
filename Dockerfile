@@ -6,7 +6,7 @@ WORKDIR /home/node
 RUN apk add --no-cache make gcc g++ python3
 
 # Paketleri yükle
-RUN npm install express bcryptjs jsonwebtoken sqlite3 dotenv node-telegram-bot-api axios nodemailer
+RUN npm install express bcryptjs jsonwebtoken sqlite3 dotenv node-telegram-bot-api axios nodemailer node-cron
 
 COPY package*.json ./
 
