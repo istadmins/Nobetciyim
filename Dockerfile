@@ -1,14 +1,23 @@
-ARG GO_VERSION=1
-FROM golang:${GO_VERSION}-bookworm as builder
+FROM node:current-alpine3.21
 
-WORKDIR /usr/src/app
-COPY go.mod go.sum ./
-RUN go mod download && go mod verify
+WORKDIR /home/node
+
+# Gerekli derleyici ve araçları yükle
+RUN apk add --no-cache make gcc g++ python3
+
+# Paketleri yükle
+RUN npm install express bcryptjs jsonwebtoken sqlite3 dotenv node-telegram-bot-api axios nodemailer
+
+COPY package*.json ./
+
+
+# (Opsiyonel) Derleyici araçları kaldır, imajı küçült
+RUN apk del make gcc g++ python3
+
 COPY . .
-RUN go build -v -o /run-app .
 
+ENV TZ="Europe/Istanbul"
 
-FROM debian:bookworm
+EXPOSE 80
 
-COPY --from=builder /run-app /usr/local/bin/
-CMD ["run-app"]
+CMD ["node", "app.js"]
