@@ -1,6 +1,6 @@
 FROM node:current-alpine3.21
 
-WORKDIR /data
+WORKDIR /home/node
 
 # Gerekli derleyici ve araçları yükle
 RUN  apk upgrade --no-cache && apk add --no-cache make gcc g++ python3
