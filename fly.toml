@@ -23,7 +23,7 @@ primary_region = 'fra'
 
 [vm]
   size = 'shared-cpu-1x'
-  memory = 256
+  memory = 512
   
 [checks]
   [checks.name_of_your_tcp_check]
