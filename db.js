@@ -1,6 +1,6 @@
 // Nobetciyim/db.js
 const sqlite3 = require('sqlite3').verbose();
-const db = new sqlite3.Database('./nobet.db', (err) => {
+const db = new sqlite3.Database('./data/nobet.db', (err) => {
   if (err) {
     console.error('Veritabanı bağlantı hatası:', err.message);
   } else {
