@@ -18,9 +18,8 @@ const app = express();
 require('./cron-jobs.js');
 
 // Telegram Bot İşleyicisini Başlat
-// Bu satırı, TELEGRAM_BOT_TOKEN tanımlıysa çalıştırmak daha iyi olabilir.
 if (process.env.TELEGRAM_BOT_TOKEN) {
-    const telegramBotHandler = require('./telegram_bot_handler.js'); // Ana dizinde olduğunu varsayıyoruz
+    const telegramBotHandler = require('./telegram_bot_handler.js');
     telegramBotHandler.init();
 } else {
     console.warn("TELEGRAM_BOT_TOKEN ortam değişkeni ayarlanmamış. Telegram botu başlatılmayacak.");
@@ -39,10 +38,10 @@ app.use('/api/nobet-kredileri', nobetKredileriRoutes);
 app.use('/api/remarks', takvimRemarksRoutes);
 app.use('/api/settings', settingsRoutes);
 
-// Statik dosyalar
+// Statik dosyalar (public klasörünü sunar)
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Ana sayfa
+// Ana sayfa yönlendirmeleri
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
@@ -54,5 +53,4 @@ app.get('/index.html', (req, res) => {
 const PORT = process.env.PORT || 80;
 app.listen(PORT, () => {
   console.log(`Sunucu ${PORT} portunda çalışıyor.`);
-  console.log('Otomatik kredi güncelleme cron job aktif.');
 });
