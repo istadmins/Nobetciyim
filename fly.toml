@@ -32,7 +32,5 @@ primary_region = 'fra'
     timeout = "10s"
     type = "tcp"
 	
-[mounts]
-	source = "vnobetci"
-	destination = "/data"
+
 
