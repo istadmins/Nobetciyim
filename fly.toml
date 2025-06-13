@@ -35,5 +35,5 @@ primary_region = 'fra'
 	
 [mounts]
 	source = "vnobetci"
-	destination = "/home/node"
+	destination = "/data"
 
