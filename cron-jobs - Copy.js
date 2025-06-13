@@ -182,44 +182,12 @@ async function setupShiftChangeCronJobs() {
                             const message = `Otomatik Vardiya Değişimi ${currentVardiyaTipi}\nAktif Nöbetçi: *${targetNobetci.name}*`;
                             console.log(`[Vardiya Değişimi] Nöbetçi ayarlandı: ${targetNobetci.name}. Telegram'a gönderilecek mesaj: ${message.replace(/\*/g, '')}`);
                             
-                            /*
                             if (envIsTelegramActive && envTelegramChatId) {
                                 await sendTelegramMessageToGroup(envTelegramChatId, message); 
                                 console.log(`[Vardiya Değişimi] Telegram mesajı ${envTelegramChatId} ID'sine gönderildi.`);
                             } else {
                                 logDebug(`[Vardiya Değişimi] Telegram bot token (${envIsTelegramActive ? 'VAR':'YOK'}) veya chat ID (${envTelegramChatId || 'YOK'}) .env'de eksik/yanlış. Mesaj gönderilmedi.`);
                             }
-                            */
-
-                            const envIsTelegramActive = !!process.env.TELEGRAM_BOT_TOKEN;
-                            if (envIsTelegramActive) {
-                                console.log("[Vardiya Değişimi] Telegram ID'si olan tüm kullanıcılara bildirim gönderiliyor...");
-                                try {
-                                    const usersToSend = await db.getAllNobetcilerWithTelegramId();
-
-                                    if (usersToSend && usersToSend.length > 0) {
-                                        // Her kullanıcıya mesaj göndermek için bir döngü oluşturuyoruz.
-                                        // Promise.all ile tüm mesajların aynı anda gönderilmesini sağlıyoruz.
-                                        const sendPromises = usersToSend.map(user => {
-                                            if (user.telegram_id) {
-                                                return sendTelegramMessageToGroup(user.telegram_id, message)
-                                                    .catch(err => console.error(`[HATA] ${user.name} (${user.telegram_id}) kullanıcısına mesaj gönderilemedi:`, err.message));
-                                            }
-                                        });
-
-                                        await Promise.all(sendPromises);
-                                        console.log(`[Vardiya Değişimi] ${usersToSend.length} kullanıcıya bildirim gönderimi denendi.`);
-
-                                    } else {
-                                        console.warn("[Vardiya Değişimi] Bildirim gönderilecek, Telegram ID'si kayıtlı kullanıcı bulunamadı.");
-                                    }
-                                } catch (dbError) {
-                                    console.error("[Vardiya Değişimi] Kullanıcıları veritabanından alırken hata oluştu:", dbError);
-                                }
-                            } else {
-                                logDebug(`[Vardiya Değişimi] Telegram bot token .env'de tanımlı değil. Mesaj gönderilmedi.`);
-                            }
-
                         } else {
                             logDebug(`[Vardiya Değişimi] ${vardiyaLogAdi}: ${targetNobetci.name} zaten aktif nöbetçi.`);
                         }
@@ -353,43 +321,12 @@ cron.schedule('0 7 * * 1', async () => {
                 const message = `${atamaTuru} Değişimi:\nAktif Nöbetçi: *${hedefNobetci.name}*`;
                 console.log(`[Pzt 07:00 Cron] Nöbetçi ayarlandı: ${hedefNobetci.name}.`);
                 
-                /*
                 if (envIsTelegramActivePzt && envTelegramChatIdPzt) {
                     await sendTelegramMessageToGroup(envTelegramChatIdPzt, message);
                     console.log(`[Pzt 07:00 Cron] Telegram mesajı ${envTelegramChatIdPzt} ID'sine gönderildi.`);
                 } else {
                     logDebug(`[Pzt 07:00 Cron] Telegram bot token veya chat ID .env'de eksik/yanlış. Mesaj gönderilmedi.`);
                 }
-                */
-
-                const envIsTelegramActivePzt = !!process.env.TELEGRAM_BOT_TOKEN; //
-                if (envIsTelegramActivePzt) {
-                    console.log("[Pzt 07:00 Cron] Telegram ID'si olan tüm kullanıcılara bildirim gönderiliyor...");
-                    try {
-                        // Önceki adımda db.js'e eklediğimiz fonksiyonu kullanıyoruz
-                        const usersToSend = await db.getAllNobetcilerWithTelegramId();
-
-                        if (usersToSend && usersToSend.length > 0) {
-                            const sendPromises = usersToSend.map(user => {
-                                if (user.telegram_id) {
-                                    return sendTelegramMessageToGroup(user.telegram_id, message)
-                                        .catch(err => console.error(`[Pzt 07:00 Cron HATA] ${user.name} (${user.telegram_id}) kullanıcısına mesaj gönderilemedi:`, err.message));
-                                }
-                            });
-
-                            await Promise.all(sendPromises);
-                            console.log(`[Pzt 07:00 Cron] ${usersToSend.length} kullanıcıya bildirim gönderimi denendi.`);
-                        } else {
-                            console.warn("[Pzt 07:00 Cron] Bildirim gönderilecek, Telegram ID'si kayıtlı kullanıcı bulunamadı.");
-                        }
-                    } catch (dbError) {
-                        console.error("[Pzt 07:00 Cron] Kullanıcıları veritabanından alırken hata oluştu:", dbError);
-                    }
-                } else {
-                    logDebug(`[Pzt 07:00 Cron] Telegram bot token .env'de tanımlı değil. Mesaj gönderilmedi.`);
-                }
-
-
             } else {
                 logDebug(`[Pzt 07:00 Cron] ${hedefNobetci.name} zaten aktif nöbetçi. Değişiklik yapılmadı.`);
             }

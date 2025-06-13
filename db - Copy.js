@@ -253,18 +253,4 @@ db.getSettings = function() {
     });
 };
 
-db.getAllNobetcilerWithTelegramId = function() {
-    return new Promise((resolve, reject) => {
-        // telegram_id'si boş veya null olmayan tüm kullanıcıları seçer
-        this.all("SELECT id, name, telegram_id FROM Nobetciler WHERE telegram_id IS NOT NULL AND telegram_id != ''", [], (err, rows) => {
-            if (err) {
-                console.error("DB Error (getAllNobetcilerWithTelegramId):", err.message);
-                reject(err);
-            } else {
-                resolve(rows);
-            }
-        });
-    });
-};
-
 module.exports = db;
