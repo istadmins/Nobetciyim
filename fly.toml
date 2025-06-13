@@ -21,8 +21,9 @@ primary_region = 'fra'
   min_machines_running = 0
   processes = ['app']
 
-[[vm]]
+[vm]
   size = 'shared-cpu-1x'
+  memory = 256
   
 [checks]
   [checks.name_of_your_tcp_check]
