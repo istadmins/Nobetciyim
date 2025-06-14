@@ -50,7 +50,7 @@ router.get('/', (req, res) => {
             logger.error('Failed to get nobetciler:', err);
             res.status(500).json({ "error": err.message });
         } else {
-            logger.debug(`Retrieved ${rows.length} nobetciler from database`);
+            // Removed debug log to reduce noise from periodic frontend updates
             res.json(rows);
         }
     });
