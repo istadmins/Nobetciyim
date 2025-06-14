@@ -3,7 +3,6 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const bcrypt = require('bcryptjs');
-const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 
@@ -34,6 +33,10 @@ const sanitizeInput = (data) => {
 router.post('/login', async (req, res) => {
   try {
     const { username, password } = sanitizeInput(req.body);
+
+    if (!username || !password) {
+      return res.status(400).json({ success: false, error: 'Kullanıcı adı ve şifre gereklidir' });
+    }
 
     // Get user from database
     const user = await new Promise((resolve, reject) => {
@@ -85,93 +88,61 @@ router.post('/login', async (req, res) => {
   }
 });
 
-
-// Şifre sıfırlama isteğini başlat (Amazon SES SMTP ile)
+// Şifre sıfırlama isteğini başlat
 router.post('/initiate-password-reset', async (req, res) => {
-    try {
-        const { username } = sanitizeInput(req.body);
+  try {
+    const { username } = sanitizeInput(req.body);
+
+    if (!username) {
+      return res.status(400).json({ success: false, message: 'Kullanıcı adı gereklidir.' });
+    }
 
     // Get user from database
-        const user = await new Promise((resolve, reject) => {
-            db.get("SELECT id, email FROM users WHERE username = ? COLLATE NOCASE", [username], (err, row) => {
-                if (err) reject(err);
-                else resolve(row);
-            });
-        });
+    const user = await new Promise((resolve, reject) => {
+      db.get("SELECT id, email FROM users WHERE username = ? COLLATE NOCASE", [username], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
 
-        if (!user) {
-            logger.warn(`Password reset attempt for non-existent user: ${username} from IP: ${req.ip}`);
-            return res.status(404).json({ success: false, message: `Kullanıcı "${username}" bulunamadı.` });
-        }
-
-        if (!user.email) {
-            logger.warn(`Password reset attempt for user without email: ${username} from IP: ${req.ip}`);
-            return res.status(400).json({ success: false, message: `"${username}" kullanıcısı için kayıtlı bir e-posta adresi bulunmamaktadır.` });
-        }
-
-        // Generate secure password
-        const newPassword = crypto.randomBytes(6).toString('hex'); // 12 character password
-        const saltRounds = parseInt(process.env.BCRYPT_ROUNDS) || 12;
-        const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
-
-            db.run("UPDATE users SET password = ? WHERE id = ?", [hashedNewPassword, user.id], async function(updateErr) {
-                if (updateErr) {
-                    console.error("Şifre sıfırlama - Şifre güncellenirken DB hatası:", updateErr.message);
-                    return res.status(500).json({ success: false, message: 'Veritabanında şifre güncellenirken bir hata oluştu.' });
-                }
-
-                // Konsolda .env değişkenlerini kontrol et (Sorun giderme için)
-                // console.log("ENV - SES_SMTP_HOST:", process.env.SES_SMTP_HOST);
-                // console.log("ENV - SES_SMTP_PORT:", process.env.SES_SMTP_PORT);
-                // console.log("ENV - SES_SMTP_USER:", process.env.SES_SMTP_USER);
-                // console.log("ENV - SES_SMTP_PASSWORD:", process.env.SES_SMTP_PASSWORD ? "Mevcut" : "Bulunamadı");
-                // console.log("ENV - EMAIL_FROM_SES_SMTP:", process.env.EMAIL_FROM_SES_SMTP);
-
-
-                // Nodemailer transporter yapılandırması (Amazon SES SMTP ile)
-                const transporter = nodemailer.createTransport({
-                    host: process.env.SES_SMTP_HOST,
-                    port: parseInt(process.env.SES_SMTP_PORT || "587"),
-                    secure: (process.env.SES_SMTP_PORT === '465'), // true for 465, false for other ports (TLS/STARTTLS)
-                    auth: {
-                        user: process.env.SES_SMTP_USER, // .env'deki SES_SMTP_USER
-                        pass: process.env.SES_SMTP_PASSWORD, // .env'deki SES_SMTP_PASSWORD
-                    },
-                    // Geliştirme ortamında self-signed sertifikalara izin vermek için tls ayarı gerekebilir
-                    // Ancak Amazon SES genellikle geçerli sertifikalar kullandığı için buna ihtiyaç olmamalıdır.
-                    // Eğer SSL/TLS bağlantı hataları alırsanız ve SES endpoint'i ile ilgili değilse,
-                    // ağınızdaki bir proxy/firewall buna neden oluyor olabilir.
-                    // tls: {
-                    //     rejectUnauthorized: process.env.NODE_ENV === 'production' // Canlıda true, geliştirme için false olabilir
-                    // }
-                });
-
-                const mailOptions = {
-                    from: process.env.EMAIL_FROM_SES_SMTP, // .env'den gelen SES gönderici adresi
-                    to: user.email,
-                    subject: 'Nobetciyim Uygulaması - Şifre Sıfırlama',
-                    text: `Merhaba ${username},\n\nİsteğiniz üzerine şifreniz sıfırlanmıştır.\nYeni şifreniz: ${newPassword}\n\nBu isteği siz yapmadıysanız, lütfen bu e-postayı dikkate almayın.`,
-                    html: `<p>Merhaba ${username},</p><p>İsteğiniz üzerine şifreniz sıfırlanmıştır.</p><p>Yeni şifreniz: <strong>${newPassword}</strong></p><p>Bu isteği siz yapmadıysanız, lütfen bu e-postayı dikkate almayın.</p>`
-                };
-
-                try {
-                    console.log("E-posta gönderilmeye çalışılıyor (SES SMTP)... Alıcı:", user.email, "Gönderici:", process.env.EMAIL_FROM_SES_SMTP);
-                    await transporter.sendMail(mailOptions);
-                    console.log(`Şifre sıfırlama e-postası ${user.email} adresine başarıyla gönderildi (SES SMTP). Yeni şifre: ${newPassword}`);
-                    return res.json({ success: true, message: 'Yeni şifreniz, kayıtlı e-posta adresinize başarıyla gönderildi.' });
-                } catch (emailError) {
-                    console.error("Şifre sıfırlama - E-posta gönderilirken hata (SES SMTP):", emailError);
-                    return res.status(500).json({
-                        success: false,
-                        message: `Şifreniz veritabanında güncellendi ancak e-posta gönderilirken bir sorun oluştu: ${emailError.message}. Lütfen Amazon SES SMTP ayarlarınızı ve .env dosyanızı kontrol edin.`
-                    });
-                }
-            });
-        });
-    } catch (error) {
-        console.error("Şifre sıfırlama isteği işlenirken genel hata:", error);
-        return res.status(500).json({ success: false, message: 'Sunucuda beklenmedik bir hata oluştu. Lütfen daha sonra tekrar deneyin.' });
+    if (!user) {
+      logger.warn(`Password reset attempt for non-existent user: ${username} from IP: ${req.ip}`);
+      return res.status(404).json({ success: false, message: `Kullanıcı "${username}" bulunamadı.` });
     }
+
+    if (!user.email) {
+      logger.warn(`Password reset attempt for user without email: ${username} from IP: ${req.ip}`);
+      return res.status(400).json({ success: false, message: `"${username}" kullanıcısı için kayıtlı bir e-posta adresi bulunmamaktadır.` });
+    }
+
+    // Generate secure password
+    const newPassword = crypto.randomBytes(6).toString('hex'); // 12 character password
+    const saltRounds = parseInt(process.env.BCRYPT_ROUNDS) || 12;
+    const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
+
+    // Update password in database
+    await new Promise((resolve, reject) => {
+      db.run("UPDATE users SET password = ? WHERE id = ?", [hashedNewPassword, user.id], function(updateErr) {
+        if (updateErr) {
+          logger.error("Şifre sıfırlama - Şifre güncellenirken DB hatası:", updateErr);
+          reject(updateErr);
+        } else {
+          resolve();
+        }
+      });
+    });
+
+    // For now, just return the new password (in production, send via email)
+    logger.info(`Password reset successful for user: ${username}. New password: ${newPassword}`);
+    res.json({ 
+      success: true, 
+      message: 'Şifreniz başarıyla sıfırlandı. Yeni şifre: ' + newPassword 
+    });
+
+  } catch (error) {
+    logger.error("Şifre sıfırlama isteği işlenirken genel hata:", error);
+    return res.status(500).json({ success: false, message: 'Sunucuda beklenmedik bir hata oluştu. Lütfen daha sonra tekrar deneyin.' });
+  }
 });
 
 module.exports = router;
