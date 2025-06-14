@@ -30,4 +30,3 @@ primary_region = 'fra'
 [mounts]
   source = "vnobetci"
   destination = "/app/data"
-
