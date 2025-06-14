@@ -5,16 +5,24 @@ const path = require('path');
 const cors = require('cors');
 require('dotenv').config();
 
-// Import utilities and middleware
-const logger = require('./utils/logger');
-const {
-  generalLimiter,
-  authLimiter,
-  passwordResetLimiter,
-  securityHeaders,
-  requestLogger,
-  errorHandler
-} = require('./middleware/security');
+// Simple console logger fallback
+const logger = {
+  info: (msg, ...args) => console.log(`[INFO] ${msg}`, ...args),
+  error: (msg, ...args) => console.error(`[ERROR] ${msg}`, ...args),
+  warn: (msg, ...args) => console.warn(`[WARN] ${msg}`, ...args),
+  debug: (msg, ...args) => console.log(`[DEBUG] ${msg}`, ...args)
+};
+
+// Import middleware (simplified)
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+
+// Simple rate limiter
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: { success: false, error: 'Çok fazla istek gönderildi' }
+});
 
 // Route dosyalarını çağır
 const authRoutes = require('./routes/auth');
@@ -30,27 +38,19 @@ const app = express();
 app.set('trust proxy', 1);
 
 // Security middleware
-app.use(securityHeaders);
-app.use(requestLogger);
+app.use(helmet());
 
 // CORS configuration
-app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://yourdomain.com'] // Replace with your actual domain
-    : true,
-  credentials: true
-}));
+app.use(cors());
 
-// Body parsing middleware with limits
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Body parsing middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Rate limiting
 app.use(generalLimiter);
 
-// API Rotaları with specific rate limiting
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/initiate-password-reset', passwordResetLimiter);
+// API Rotaları
 app.use('/api/auth', authRoutes);
 app.use('/api/nobetci', nobetciRoutes);
 app.use('/api/kurallar', kurallarRoutes);
@@ -90,18 +90,13 @@ app.use('*', (req, res) => {
   });
 });
 
-// Error handling middleware (must be last)
-app.use(errorHandler);
-
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  logger.info('SIGTERM received, shutting down gracefully');
-  process.exit(0);
-});
-
-process.on('SIGINT', () => {
-  logger.info('SIGINT received, shutting down gracefully');
-  process.exit(0);
+// Simple error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  res.status(500).json({
+    success: false,
+    error: 'Sunucu hatası oluştu'
+  });
 });
 
 // Start server

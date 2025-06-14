@@ -6,16 +6,32 @@ const bcrypt = require('bcryptjs');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
-const logger = require('../utils/logger');
-const { validationRules, validate, sanitizeInput } = require('../utils/validation');
-const { authenticateToken } = require('../middleware/security');
 
-// Login endpoint with validation
-router.post('/login', [
-  validationRules.username,
-  validationRules.password,
-  validate
-], async (req, res) => {
+// Simple console logger fallback
+const logger = {
+  info: (msg, ...args) => console.log(`[INFO] ${msg}`, ...args),
+  error: (msg, ...args) => console.error(`[ERROR] ${msg}`, ...args),
+  warn: (msg, ...args) => console.warn(`[WARN] ${msg}`, ...args)
+};
+
+// Simple validation function
+const sanitizeInput = (data) => {
+  if (typeof data === 'object' && data !== null) {
+    const sanitized = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (typeof value === 'string') {
+        sanitized[key] = value.trim();
+      } else {
+        sanitized[key] = value;
+      }
+    }
+    return sanitized;
+  }
+  return data;
+};
+
+// Login endpoint
+router.post('/login', async (req, res) => {
   try {
     const { username, password } = sanitizeInput(req.body);
 
@@ -71,10 +87,7 @@ router.post('/login', [
 
 
 // Şifre sıfırlama isteğini başlat (Amazon SES SMTP ile)
-router.post('/initiate-password-reset', [
-    validationRules.username,
-    validate
-], async (req, res) => {
+router.post('/initiate-password-reset', async (req, res) => {
     try {
         const { username } = sanitizeInput(req.body);
 

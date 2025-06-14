@@ -2,7 +2,14 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
-const logger = require('./utils/logger');
+
+// Simple console logger fallback
+const logger = {
+  info: (msg, ...args) => console.log(`[INFO] ${msg}`, ...args),
+  error: (msg, ...args) => console.error(`[ERROR] ${msg}`, ...args),
+  warn: (msg, ...args) => console.warn(`[WARN] ${msg}`, ...args),
+  debug: (msg, ...args) => console.log(`[DEBUG] ${msg}`, ...args)
+};
 
 // Ensure data directory exists
 const dataDir = path.dirname(process.env.DB_PATH || './data/nobet.db');
