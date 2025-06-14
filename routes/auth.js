@@ -1,58 +1,105 @@
 // routes/auth.js
 const express = require('express');
 const router = express.Router();
-const db = require('../db'); // Bu yolun db.js dosyanıza göre doğru olduğundan emin olun
+const db = require('../db');
 const bcrypt = require('bcryptjs');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
+const logger = require('../utils/logger');
+const { validationRules, validate, sanitizeInput } = require('../utils/validation');
+const { authenticateToken } = require('../middleware/security');
 
-// Mevcut /login route'unuz
-router.post('/login', (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) return res.status(400).json({ success: false, error: 'Eksik bilgi' });
+// Login endpoint with validation
+router.post('/login', [
+  validationRules.username,
+  validationRules.password,
+  validate
+], async (req, res) => {
+  try {
+    const { username, password } = sanitizeInput(req.body);
 
-  db.get('SELECT * FROM users WHERE username = ?', [username], (err, user) => {
-    if (err) return res.status(500).json({ success: false, error: 'Sunucu hatası' });
-    if (!user) return res.status(404).json({ success: false, error: 'Kullanıcı bulunamadı' });
-
-    bcrypt.compare(password, user.password, (bcryptErr, result) => {
-      if (bcryptErr) return res.status(500).json({ success: false, error: 'Sunucu hatası' });
-      if (!result) return res.status(401).json({ success: false, error: 'Geçersiz şifre' });
-
-      const token = require('jsonwebtoken').sign(
-        { id: user.id, username: user.username },
-        process.env.JWT_SECRET, // JWT_SECRET .env dosyanızda tanımlı olmalı
-        { expiresIn: '8h' }
-      );
-      res.json({ success: true, token, username: user.username });
+    // Get user from database
+    const user = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM users WHERE username = ? COLLATE NOCASE', [username], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
     });
-  });
+
+    if (!user) {
+      logger.warn(`Failed login attempt for username: ${username} from IP: ${req.ip}`);
+      return res.status(401).json({ success: false, error: 'Geçersiz kullanıcı adı veya şifre' });
+    }
+
+    // Verify password
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    if (!isValidPassword) {
+      logger.warn(`Failed login attempt for username: ${username} from IP: ${req.ip}`);
+      return res.status(401).json({ success: false, error: 'Geçersiz kullanıcı adı veya şifre' });
+    }
+
+    // Update last login
+    db.run('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?', [user.id], (err) => {
+      if (err) logger.error('Failed to update last login:', err);
+    });
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { 
+        id: user.id, 
+        username: user.username, 
+        role: user.role 
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.SESSION_TIMEOUT || '8h' }
+    );
+
+    logger.info(`Successful login for username: ${username} from IP: ${req.ip}`);
+    res.json({ 
+      success: true, 
+      token, 
+      username: user.username,
+      role: user.role
+    });
+
+  } catch (error) {
+    logger.error('Login error:', error);
+    res.status(500).json({ success: false, error: 'Sunucu hatası oluştu' });
+  }
 });
 
 
 // Şifre sıfırlama isteğini başlat (Amazon SES SMTP ile)
-router.post('/initiate-password-reset', async (req, res) => {
-    const { username } = req.body;
-
-    if (!username) {
-        return res.status(400).json({ success: false, message: 'Kullanıcı adı gereklidir.' });
-    }
-
+router.post('/initiate-password-reset', [
+    validationRules.username,
+    validate
+], async (req, res) => {
     try {
-        db.get("SELECT id, email FROM users WHERE username = ?", [username], async (err, user) => {
-            if (err) {
-                console.error("Şifre sıfırlama - Kullanıcı bulunurken DB hatası:", err.message);
-                return res.status(500).json({ success: false, message: 'Sunucu hatası oluştu. Lütfen daha sonra tekrar deneyin.' });
-            }
-            if (!user) {
-                return res.status(404).json({ success: false, message: `Kullanıcı "${username}" bulunamadı.` });
-            }
-            if (!user.email) {
-                return res.status(400).json({ success: false, message: `"${username}" kullanıcısı için kayıtlı bir e-posta adresi bulunmamaktadır.` });
-            }
+        const { username } = sanitizeInput(req.body);
 
-            const newPassword = crypto.randomBytes(4).toString('hex');
-            const hashedNewPassword = bcrypt.hashSync(newPassword, 10);
+    // Get user from database
+        const user = await new Promise((resolve, reject) => {
+            db.get("SELECT id, email FROM users WHERE username = ? COLLATE NOCASE", [username], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+
+        if (!user) {
+            logger.warn(`Password reset attempt for non-existent user: ${username} from IP: ${req.ip}`);
+            return res.status(404).json({ success: false, message: `Kullanıcı "${username}" bulunamadı.` });
+        }
+
+        if (!user.email) {
+            logger.warn(`Password reset attempt for user without email: ${username} from IP: ${req.ip}`);
+            return res.status(400).json({ success: false, message: `"${username}" kullanıcısı için kayıtlı bir e-posta adresi bulunmamaktadır.` });
+        }
+
+        // Generate secure password
+        const newPassword = crypto.randomBytes(6).toString('hex'); // 12 character password
+        const saltRounds = parseInt(process.env.BCRYPT_ROUNDS) || 12;
+        const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
 
             db.run("UPDATE users SET password = ? WHERE id = ?", [hashedNewPassword, user.id], async function(updateErr) {
                 if (updateErr) {
