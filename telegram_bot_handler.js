@@ -52,6 +52,28 @@ function initBot() {
         }
     }
 
+    // Takvim açıklaması alma fonksiyonu
+    async function getTakvimAciklamasi(yil, hafta) {
+        return new Promise((resolve) => {
+            db.get("SELECT aciklama FROM takvim_aciklamalari WHERE yil = ? AND hafta = ?", [yil, hafta], (err, row) => {
+                if (err) { 
+                    console.error("Takvim açıklaması alınırken hata:", err.message); 
+                    resolve(null); 
+                } else {
+                    resolve(row ? row.aciklama : null);
+                }
+            });
+        });
+    }
+
+    // Haftanın yıl ve hafta numarasını hesaplama fonksiyonu
+    function getWeekInfo(date) {
+        const startDate = new Date(date.getFullYear(), 0, 1);
+        const days = Math.floor((date - startDate) / (24 * 60 * 60 * 1000));
+        const weekNumber = Math.ceil(days / 7);
+        return { year: date.getFullYear(), week: weekNumber };
+    }
+
     botInstance.onText(/^\/(start|menu)$/, async (msg) => {
         const chatId = msg.chat.id;
         const nobetci = await getAuthorizedNobetciByTelegramId(chatId);
@@ -164,15 +186,30 @@ function initBot() {
         botInstance.answerCallbackQuery(callbackQuery.id);
     });
 
+    // AKTİF NÖBETÇİ komutu - Yedek dosyadan alınan güzel açıklama
     botInstance.onText(/^\/aktif_nobetci$/, async (msg) => {
         const chatId = msg.chat.id;
+        const nobetci = await getAuthorizedNobetciByTelegramId(chatId);
+        
+        if (!nobetci) {
+            return botInstance.sendMessage(chatId, "❌ Bu komutu kullanma yetkiniz yok.");
+        }
+
         try {
             const aktifNobetci = await getCurrentlyActiveNobetciFromDB();
-            botInstance.sendMessage(chatId, aktifNobetci ? `Aktif nöbetçi: *${aktifNobetci.name}*` : "Aktif nöbetçi yok.", { parse_mode: 'Markdown' });
-        } catch (error) { botInstance.sendMessage(chatId, "❌ Aktif nöbetçi alınırken hata."); }
+            if (aktifNobetci) {
+                const mesaj = `🟢 **Aktif Nöbetçi:**\n*${aktifNobetci.name}*\nKredi: ${aktifNobetci.kredi || 0}`;
+                botInstance.sendMessage(chatId, mesaj, { parse_mode: 'Markdown' });
+            } else {
+                botInstance.sendMessage(chatId, "❌ Şu anda aktif nöbetçi bulunmuyor.");
+            }
+        } catch (error) {
+            console.error("[/aktif_nobetci] Hata:", error.message);
+            botInstance.sendMessage(chatId, "❌ Aktif nöbetçi bilgisi alınırken hata oluştu.");
+        }
     });
 
-    // YENİ KOMUT: Gelecek hafta nöbetçi
+    // YENİ KOMUT: Gelecek hafta nöbetçi - açıklama gösterimi düzeltildi
     botInstance.onText(/^\/gelecek_hafta_nobetci$/, async (msg) => {
         const chatId = msg.chat.id;
         const nobetciYetkili = await getAuthorizedNobetciByTelegramId(chatId);
@@ -213,9 +250,12 @@ function initBot() {
             mesaj += `📍 Tarih: ${formatTarih(haftaBasi)} - ${formatTarih(haftaSonu)}\n`;
             mesaj += `👤 Nöbetçi: *${gelecekHaftaNobetci.name}*\n`;
             
-            // Eğer açıklama varsa ekle
-            if (gelecekHaftaNobetci.aciklama) {
-                mesaj += `📝 Açıklama: ${gelecekHaftaNobetci.aciklama}\n`;
+            // Takvim açıklamasını al
+            const weekInfo = getWeekInfo(nextWeek);
+            const aciklama = await getTakvimAciklamasi(weekInfo.year, weekInfo.week);
+            
+            if (aciklama) {
+                mesaj += `📝 Açıklama: ${aciklama}\n`;
             }
 
             botInstance.sendMessage(chatId, mesaj, { parse_mode: 'Markdown' });
@@ -226,7 +266,7 @@ function initBot() {
         }
     });
 
-    // DÜZELTME: Kredi durumu komutu - db.getNobetciById kullanımı yerine doğrudan sorgu
+    // KREDİ DURUM komutu - Yedek dosyadan alınan güzel açıklama ve düzeltilmiş sıralama
     botInstance.onText(/^\/nobet_kredi_durum$/, async (msg) => {
         const chatId = msg.chat.id;
         const nobetciYetkili = await getAuthorizedNobetciByTelegramId(chatId);
@@ -257,18 +297,19 @@ function initBot() {
             });
 
             if (!nobetcilerFullData || nobetcilerFullData.length === 0) {
-                botInstance.sendMessage(chatId, "Sistemde kayıtlı nöbetçi bulunmamaktadır.");
+                botInstance.sendMessage(chatId, "❌ Sistemde kayıtlı nöbetçi bulunamadı.");
                 return;
             }
 
             // Nöbetçileri Kazanılan Krediye göre BÜYÜKTEN KÜÇÜĞE sırala
             nobetcilerFullData.sort((a, b) => b.kredi - a.kredi);
 
-            let krediDurumMesaji = "📊 *Nöbetçi Kredi Durumları* 📊\n\n";
+            let krediDurumMesaji = "📊 **Nöbetçi Kredi Durumları** 📊\n\n";
             const KREDI_PER_GUN = 2396; 
 
             for (const mevcutNobetci of nobetcilerFullData) {
-                krediDurumMesaji += `*${mevcutNobetci.name}*:\n` +
+                const aktifMi = mevcutNobetci.is_aktif ? "🟢" : "⚪";
+                krediDurumMesaji += `${aktifMi} *${mevcutNobetci.name}*:\n` +
                                   `  Pay Edilen: ${mevcutNobetci.pay_edilen_kredi}\n` +
                                   `  Kazanılan: ${mevcutNobetci.kredi}\n` +
                                   `  (Kalan: ${mevcutNobetci.kalan_kredi})\n`;
@@ -304,15 +345,28 @@ function initBot() {
         }
     });
     
+    // ŞİFRE SIFIRLAMA komutu - Yedek dosyadan alınan güzel açıklama
     botInstance.onText(/^\/sifre_sifirla$/, async (msg) => {
         const chatId = msg.chat.id;
         const nobetci = await getAuthorizedNobetciByTelegramId(chatId);
-        if (!nobetci) { botInstance.sendMessage(chatId, "❌ Yetkiniz yok."); return; }
+        
+        if (!nobetci) {
+            return botInstance.sendMessage(chatId, "❌ Bu komutu kullanma yetkiniz yok.");
+        }
+
         try {
             const apiResponse = await axios.post(`${localApiBaseUrl}/nobetci/reset-password/${nobetci.id}`, {}, { headers: { 'Authorization': `Bearer ${INTERNAL_API_TOKEN}` }});
             if (apiResponse.data && apiResponse.data.newPassword) {
-                botInstance.sendMessage(chatId, `🔑 Yeni şifreniz: \`${apiResponse.data.newPassword}\`\nLütfen hemen değiştirin ve bu mesajı silin.`, { parse_mode: 'Markdown' });
-            } else { throw new Error("API'den yeni şifre gelmedi."); }
+                const mesaj = `🔑 **Şifreniz Sıfırlandı**\n\n` +
+                             `Kullanıcı Adı: *${nobetci.name}*\n` +
+                             `Yeni Şifre: \`${apiResponse.data.newPassword}\`\n\n` +
+                             `⚠️ Bu mesajı kaydedin ve güvenli bir yerde saklayın!\n` +
+                             `Lütfen hemen değiştirin ve bu mesajı silin.`;
+                
+                botInstance.sendMessage(chatId, mesaj, { parse_mode: 'Markdown' });
+            } else { 
+                throw new Error("API'den yeni şifre gelmedi."); 
+            }
         } catch (error) {
             console.error("Şifre sıfırlama API hatası:", error.response ? error.response.data : error.message);
             botInstance.sendMessage(chatId, `❌ Şifre sıfırlanırken hata: ${error.response ? error.response.data.error : error.message}`);
@@ -349,7 +403,25 @@ async function sendTelegramMessageToGroup(groupId, message) {
     }
 }
 
+async function notifyAllOfDutyChange(newActiveGuardName) {
+    if (!botInstance) return;
+    try {
+        const usersToSend = await db.getAllNobetcilerWithTelegramId();
+        if (usersToSend && usersToSend.length > 0) {
+            const message = `Manuel Nöbet Değişikliği:\nYeni Aktif Nöbetçi: *${newActiveGuardName}*`;
+            const sendPromises = usersToSend.map(user =>
+                sendTelegramMessageToGroup(user.telegram_id, message).catch(err => {})
+            );
+            await Promise.all(sendPromises);
+            console.log(`[Bildirim] ${usersToSend.length} kullanıcıya manuel değişiklik bildirildi.`);
+        }
+    } catch (error) {
+        console.error("Tüm kullanıcılara bildirim gönderilirken hata:", error.message);
+    }
+}
+
 module.exports = {
     init: initBot,
-    sendTelegramMessageToGroup
+    sendTelegramMessageToGroup,
+    notifyAllOfDutyChange
 };
