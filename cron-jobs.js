@@ -11,6 +11,14 @@ function logDebug(message, ...optionalParams) {
     }
 }
 
+function logCreditUpdate(message, ...optionalParams) {
+    // Development modunda console'a yaz, production'da sadece dosyaya yaz
+    if (process.env.NODE_ENV !== 'production') {
+        const timestamp = new Date().toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' });
+        console.log(`[KREDİ ${timestamp}] ${message}`, ...optionalParams);
+    }
+}
+
 console.log(`[CRON-JOBS INIT] CRON_DEBUG_LOGGING değeri: "${process.env.CRON_DEBUG_LOGGING}"`);
 
 // --- KREDİ HESAPLAMA YARDIMCI FONKSİYONLARI (ORİJİNAL HALİNE GETİRİLDİ) ---
@@ -67,13 +75,20 @@ cron.schedule('* * * * *', async () => {
         const shiftTimeRanges = await db.getShiftTimeRanges();
 
         let eklenecekKredi = 0;
+        let krediSebebi = "";
+        
         const ozelKredi = anlikOzelGunKredisiAl(now, tumKrediKurallari);
         if (ozelKredi !== null) {
             eklenecekKredi = ozelKredi;
+            // Özel günün adını bul
+            const ozelGun = tumKrediKurallari.find(k => k.kural_adi !== 'Hafta Sonu' && k.tarih && 
+                k.tarih === now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0'));
+            krediSebebi = `özel gün (${ozelGun ? ozelGun.kural_adi : 'Bilinmeyen özel gün'})`;
         } else {
             const haftaSonuKredisiDegeri = anlikHaftaSonuKredisi(now, tumKrediKurallari);
             if (haftaSonuKredisiDegeri !== 0) {
                 eklenecekKredi = haftaSonuKredisiDegeri;
+                krediSebebi = "hafta sonu";
             } else {
                 let currentShiftRule = null;
                 if (shiftTimeRanges && shiftTimeRanges.length > 0) {
@@ -84,12 +99,22 @@ cron.schedule('* * * * *', async () => {
                         }
                     }
                 }
-                eklenecekKredi = currentShiftRule ? currentShiftRule.kredi_dakika : 1;
+                if (currentShiftRule) {
+                    eklenecekKredi = currentShiftRule.kredi_dakika;
+                    krediSebebi = `vardiya saati (${currentShiftRule.baslangic_saat}-${currentShiftRule.bitis_saat})`;
+                } else {
+                    eklenecekKredi = 1;
+                    krediSebebi = "normal mesai saati";
+                }
             }
         }
         
-        const yeniKredi = (aktifNobetci.kredi || 0) + eklenecekKredi;
+        const eskiKredi = aktifNobetci.kredi || 0;
+        const yeniKredi = eskiKredi + eklenecekKredi;
         await db.updateNobetciKredi(aktifNobetci.id, yeniKredi);
+        
+        // Ayrıntılı kredi güncelleme logu
+        logCreditUpdate(`${aktifNobetci.name}'in kredisi güncellendi: ${eklenecekKredi} kredi eklendi (${krediSebebi}). Eski kredi: ${eskiKredi}, Yeni kredi: ${yeniKredi}`);
         logDebug(`[Kredi Cron] ${aktifNobetci.name} kredisi güncellendi. Yeni Kredi: ${yeniKredi}`);
         
     } catch (error) {
