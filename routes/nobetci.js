@@ -4,14 +4,7 @@ const router = express.Router();
 const db = require('../db'); // Ana dizindeki db.js'e erişim
 const { notifyAllOfDutyChange } = require('../telegram_bot_handler'); // Bildirim fonksiyonu
 const crypto = require('crypto');
-
-// Simple console logger
-const logger = {
-  info: (msg, ...args) => console.log(`[INFO] ${msg}`, ...args),
-  error: (msg, ...args) => console.error(`[ERROR] ${msg}`, ...args),
-  warn: (msg, ...args) => console.warn(`[WARN] ${msg}`, ...args),
-  debug: (msg, ...args) => console.log(`[DEBUG] ${msg}`, ...args)
-};
+const logger = require('../utils/logger'); // Winston logger kullan
 
 // AKTİF NÖBETÇİYİ DEĞİŞTİRİR VE BİLDİRİM GÖNDERİR
 router.post('/:id/set-aktif', async (req, res) => {
