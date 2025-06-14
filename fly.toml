@@ -7,7 +7,6 @@ primary_region = 'fra'
 [env]
   PORT = '80'
   NODE_ENV = 'development'
-  CRON_DEBUG_LOGGING = 'true'
 
 [http_service]
   internal_port = 80
