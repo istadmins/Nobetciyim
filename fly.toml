@@ -6,7 +6,7 @@ primary_region = 'fra'
 
 [env]
   PORT = '80'
-  NODE_ENV = 'production'
+  NODE_ENV = 'development'
 
 [http_service]
   internal_port = 80
