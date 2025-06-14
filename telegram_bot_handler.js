@@ -2,21 +2,17 @@
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 const db = require('./db');
-<<<<<<< HEAD
-const { getAsilHaftalikNobetci, getAllNobetcilerFromDB } = require('./utils/calendarUtils');
-=======
 // utils klasöründeki dosyanın varlığını varsayıyoruz
 const { getAsilHaftalikNobetci, getAllNobetcilerFromDB } = require('./utils/calendarUtils'); 
 
 let botInstance = null;
->>>>>>> parent of 6454550 (Update telegram_bot_handler.js)
 const botToken = process.env.TELEGRAM_BOT_TOKEN;
 const localApiBaseUrl = `http://localhost:${process.env.PORT || 80}/api`;
 const INTERNAL_API_TOKEN = process.env.INTERNAL_API_TOKEN;
-let botInstance = null;
+
 function initBot() {
     if (!botToken) {
-        console.error("HATA: TELEGRAM_BOT_TOKEN ortam değişkeni ayarlanmamış. Bot başlatılamıyor.");
+        console.error("HATA: TELEGRAM_BOT_TOKEN ayarlanmamış.");
         return;
     }
     if (botInstance) return botInstance;
@@ -34,19 +30,11 @@ function initBot() {
     }
 
     async function getCurrentlyActiveNobetciFromDB() {
-        return new Promise((resolve, reject) => {
-            db.get("SELECT * FROM Nobetciler WHERE is_aktif = 1", [], (err, row) => {
-                if (err) { console.error("DB Error (getCurrentlyActiveNobetciFromDB):", err.message); reject(err); }
-                else { resolve(row); }
-            });
-        });
+        return db.getAktifNobetci();
     }
 
-<<<<<<< HEAD
-=======
     // --- TELEGRAM KOMUTLARI (ORİJİNAL HALİNE GETİRİLDİ) ---
 
->>>>>>> parent of 6454550 (Update telegram_bot_handler.js)
     botInstance.onText(/^\/(start|menu)$/, async (msg) => {
         //... Orijinal /start komutunuz ...
     });
@@ -89,17 +77,12 @@ function initBot() {
             let approver = X || C;
             if (!approver || !approver.id || !approver.telegram_id) {
                  return botInstance.sendMessage(T.telegram_id, `❌ Nöbet devri için onaycı bulunamadı veya Telegram ID'si eksik.`);
-            if (approver.id === T.id) {
-                await axios.post(`${localApiBaseUrl}/nobetci/${T.id}/set-aktif`, {}, { headers: { 'Authorization': `Bearer ${INTERNAL_API_TOKEN}` } });
-                botInstance.sendMessage(T.telegram_id, `✅ Nöbeti aldınız (onay gerekmedi).`, { parse_mode: 'Markdown' });
-                return;
             }
 
             const requestId = `ntr_${Date.now()}_${T.id}`;
             pendingTransferRequests[requestId] = {
                 requesterChatId: T.telegram_id, requesterNobetciId: T.id, requesterNobetciAdi: T.name,
-                approverNobetciId: approver.id, approverNobetciTelegramId: approver.telegram_id, approverNobetciAdi: approver.name,
-				originalActiveNobetciId: X ? X.id : null, timestamp: Date.now()
+                approverNobetciId: approver.id, approverNobetciTelegramId: approver.telegram_id, approverNobetciAdi: approver.name
             };
             const onayMesaji = `Merhaba *${approver.name}*,\n*${T.name}* nöbeti devralmak istiyor. Onaylıyor musunuz?`;
             await botInstance.sendMessage(approver.telegram_id, onayMesaji, {
