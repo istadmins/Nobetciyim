@@ -6,89 +6,32 @@ const { notifyAllOfDutyChange } = require('../telegram_bot_handler'); // Bildiri
 const crypto = require('crypto');
 const logger = require('../utils/logger'); // Winston logger kullan
 
-
-
 // AKTİF NÖBETÇİYİ DEĞİŞTİRİR VE BİLDİRİM GÖNDERİR
-router.post('/:id/set-aktif', authenticateToken, async (req, res) => {
-    const nobetciId = parseInt(req.params.id, 10);
-
-    if (isNaN(nobetciId)) {
-        return res.status(400).json({ success: false, error: 'Geçersiz Nöbetçi ID.' });
-    }
-
+router.post('/:id/set-aktif', async (req, res) => {
+    const nobetciIdToSet = req.params.id;
     try {
-        await db.setAktifNobetci(nobetciId);
+        const currentActive = await db.getAktifNobetci();
+        const newActive = await db.getNobetciById(nobetciIdToSet);
 
-        const newActiveGuard = await db.getNobetciById(nobetciId);
-        if (!newActiveGuard) {
-             // Bu durum normalde setAktifNobetci'de yakalanır ama yine de kontrol edelim.
-            return res.status(404).json({ success: false, error: 'Nöbetçi ayarlandı ancak bilgileri bulunamadı.' });
+        if (!newActive) {
+            return res.status(404).json({ error: "Ayarlanmak istenen nöbetçi bulunamadı." });
+        }
+
+        if (currentActive && currentActive.id === parseInt(nobetciIdToSet)) {
+            return res.json({ message: `${newActive.name} zaten aktif nöbetçi.` });
         }
         
-        console.log(`API aracılığıyla aktif nöbetçi başarıyla değiştirildi: ${newActiveGuard.name}`);
+        await db.setAktifNobetci(nobetciIdToSet);
+        logger.info(`Aktif nöbetçi manuel olarak değiştirildi: ${newActive.name}`);
 
-        // Telegram bildirimi gönder
-        notifyAllOfDutyChange(newActiveGuard.name).catch(err => {
-            console.error("set-aktif sonrası Telegram bildirimi gönderilemedi:", err.message);
-        });
+        // Tüm kullanıcılara bildirim gönder
+        await notifyAllOfDutyChange(newActive.name);
 
-        res.json({ 
-            success: true, 
-            message: `Nöbetçi ${newActiveGuard.name} başarıyla aktif olarak ayarlandı.` 
-        });
+        res.json({ message: `Aktif nöbetçi başarıyla ${newActive.name} olarak ayarlandı.` });
 
     } catch (error) {
-        // Hata loglaması ve istemciye net hata mesajı
-        console.error(`API /set-aktif Hata:`, error.message); // Bu satır sizin loglarınıza benzer bir çıktı üretir
-        res.status(500).json({ 
-            success: false, 
-            error: error.message || 'Nöbetçi aktif olarak ayarlanırken sunucuda bir hata oluştu.' 
-        });
-    }
-});
-
-
-const { authenticateToken } = require('../middleware/authMiddleware'); // Eğer kimlik doğrulama varsa
-
-// ... (dosyanın diğer route'ları burada olabilir)
-
-// AKTİF NÖBETÇİYİ AYARLA
-// POST /api/nobetci/:id/set-aktif
-router.post('/:id/set-aktif', authenticateToken, async (req, res) => {
-    const nobetciId = parseInt(req.params.id, 10);
-
-    if (isNaN(nobetciId)) {
-        return res.status(400).json({ success: false, error: 'Geçersiz Nöbetçi ID.' });
-    }
-
-    try {
-        await db.setAktifNobetci(nobetciId);
-
-        const newActiveGuard = await db.getNobetciById(nobetciId);
-        if (!newActiveGuard) {
-             // Bu durum normalde setAktifNobetci'de yakalanır ama yine de kontrol edelim.
-            return res.status(404).json({ success: false, error: 'Nöbetçi ayarlandı ancak bilgileri bulunamadı.' });
-        }
-        
-        console.log(`API aracılığıyla aktif nöbetçi başarıyla değiştirildi: ${newActiveGuard.name}`);
-
-        // Telegram bildirimi gönder
-        notifyAllOfDutyChange(newActiveGuard.name).catch(err => {
-            console.error("set-aktif sonrası Telegram bildirimi gönderilemedi:", err.message);
-        });
-
-        res.json({ 
-            success: true, 
-            message: `Nöbetçi ${newActiveGuard.name} başarıyla aktif olarak ayarlandı.` 
-        });
-
-    } catch (error) {
-        // Hata loglaması ve istemciye net hata mesajı
-        console.error(`API /set-aktif Hata:`, error.message); // Bu satır sizin loglarınıza benzer bir çıktı üretir
-        res.status(500).json({ 
-            success: false, 
-            error: error.message || 'Nöbetçi aktif olarak ayarlanırken sunucuda bir hata oluştu.' 
-        });
+        logger.error("API /set-aktif Hata:", error.message);
+        res.status(500).json({ error: "Aktif nöbetçi ayarlanırken sunucuda bir hata oluştu." });
     }
 });
 
