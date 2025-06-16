@@ -171,58 +171,54 @@ db.getShiftTimeRanges = function() {
     });
 };
 
+/**
+ * YENİ ve GÜVENLİ setAktifNobetci FONKSİYONU
+ * Aktif nöbetçiyi ayarlar. Önce tüm nöbetçileri pasif yapar, sonra belirtilen ID'yi aktif yapar.
+ * Bu işlem bir transaction içinde güvenli bir şekilde yapılır.
+ * @param {number | null} nobetciId - Aktif yapılacak nöbetçinin ID'si veya null (herkesi pasif yapmak için)
+ */
 db.setAktifNobetci = function(nobetciId) {
     return new Promise((resolve, reject) => {
-        // Validate input
         if (nobetciId !== null && (typeof nobetciId !== 'number' || nobetciId <= 0)) {
             return reject(new Error('Geçersiz nöbetçi ID'));
         }
 
-        this.serialize(() => {
-            this.run("BEGIN TRANSACTION", (err) => {
+        db.serialize(() => {
+            db.run("BEGIN TRANSACTION;", (err) => {
+                if (err) return reject(new Error("Transaction başlatılamadı: " + err.message));
+            });
+
+            // Adım 1: Herkesi pasif yap
+            db.run("UPDATE Nobetciler SET is_aktif = 0, updated_at = CURRENT_TIMESTAMP WHERE is_aktif = 1;", function(err) {
                 if (err) {
-                    console.error("Transaction başlatma hatası:", err);
-                    return reject(err);
+                    db.run("ROLLBACK;");
+                    return reject(new Error("Aktif nöbetçi sıfırlanamadı: " + err.message));
                 }
 
-                this.run("UPDATE Nobetciler SET is_aktif = 0, updated_at = CURRENT_TIMESTAMP", (err) => {
-                    if (err) {
-                        console.error("DB Error (setAktifNobetci - step 1):", err);
-                        this.run("ROLLBACK");
-                        return reject(new Error('Aktif nöbetçi sıfırlanamadı'));
-                    }
-
-                    if (nobetciId !== null && typeof nobetciId !== 'undefined') {
-                        this.run("UPDATE Nobetciler SET is_aktif = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [nobetciId], function(errUpdate) {
-                            if (errUpdate) {
-                                console.error("DB Error (setAktifNobetci - step 2):", errUpdate);
-                                this.run("ROLLBACK");
-                                return reject(new Error('Nöbetçi aktif olarak ayarlanamadı'));
-                            }
-
-                            if (this.changes === 0) {
-                                this.run("ROLLBACK");
-                                return reject(new Error('Nöbetçi bulunamadı'));
-                            }
-
-                            this.run("COMMIT", (commitErr) => {
-                                if (commitErr) {
-                                    console.error("Transaction commit hatası:", commitErr);
-                                    return reject(commitErr);
-                                }
-                                resolve();
-                            });
-                        });
-                    } else {
-                        this.run("COMMIT", (commitErr) => {
-                            if (commitErr) {
-                                console.error("Transaction commit hatası:", commitErr);
-                                return reject(commitErr);
-                            }
+                // Adım 2: Yeni nöbetçiyi aktif yap (eğer null değilse)
+                if (nobetciId !== null) {
+                    db.run("UPDATE Nobetciler SET is_aktif = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [nobetciId], function(errUpdate) {
+                        if (errUpdate) {
+                            db.run("ROLLBACK;");
+                            return reject(new Error("Nöbetçi aktif olarak ayarlanamadı: " + errUpdate.message));
+                        }
+                        if (this.changes === 0) {
+                            db.run("ROLLBACK;");
+                            return reject(new Error(`Ayarlanmak istenen nöbetçi (ID: ${nobetciId}) bulunamadı.`));
+                        }
+                        
+                        db.run("COMMIT;", (commitErr) => {
+                            if (commitErr) return reject(new Error("Transaction bitirilemedi: " + commitErr.message));
                             resolve();
                         });
-                    }
-                });
+                    });
+                } else {
+                    // Sadece sıfırlama istenmişse, işlemi bitir
+                    db.run("COMMIT;", (commitErr) => {
+                        if (commitErr) return reject(new Error("Transaction bitirilemedi: " + commitErr.message));
+                        resolve();
+                    });
+                }
             });
         });
     });
