@@ -1,4 +1,5 @@
 // Nobetciyim/cron-jobs.js
+
 const cron = require('node-cron');
 const db = require('./db');
 const { getAsilHaftalikNobetci, getWeekOfYear } = require('./utils/calendarUtils');
@@ -21,7 +22,7 @@ function logCreditUpdate(message, ...optionalParams) {
 
 console.log(`[CRON-JOBS INIT] CRON_DEBUG_LOGGING değeri: "${process.env.CRON_DEBUG_LOGGING}"`);
 
-// --- KREDİ HESAPLAMA YARDIMCI FONKSİYONLARI (ORİJİNAL HALİNE GETİRİLDİ) ---
+// --- KREDİ HESAPLAMA YARDIMCI FONKSİYONLARI ---
 function anlikHaftaSonuKredisi(tarih, tumKurallar) {
     const haftaSonuKurali = tumKurallar.find(k => k.kural_adi === 'Hafta Sonu');
     if (!haftaSonuKurali || typeof haftaSonuKurali.kredi === 'undefined') return 0;
@@ -60,10 +61,11 @@ function isTimeInInterval(dateObj, startTimeStr, endTimeStr) {
     }
 }
 
-// --- DAKİKALIK KREDİ GÜNCELLEME (ORİJİNAL HALİNE GETİRİLDİ) ---
+// --- DAKİKALIK KREDİ GÜNCELLEME ---
 cron.schedule('* * * * *', async () => {
     const now = new Date();
     logDebug(`[Kredi Cron] Tetiklendi.`);
+    
     try {
         const aktifNobetci = await db.getAktifNobetci();
         if (!aktifNobetci) {
@@ -73,15 +75,13 @@ cron.schedule('* * * * *', async () => {
 
         const tumKrediKurallari = await db.getAllKrediKurallari();
         const shiftTimeRanges = await db.getShiftTimeRanges();
-
         let eklenecekKredi = 0;
         let krediSebebi = "";
-        
+
         const ozelKredi = anlikOzelGunKredisiAl(now, tumKrediKurallari);
         if (ozelKredi !== null) {
             eklenecekKredi = ozelKredi;
-            // Özel günün adını bul
-            const ozelGun = tumKrediKurallari.find(k => k.kural_adi !== 'Hafta Sonu' && k.tarih && 
+            const ozelGun = tumKrediKurallari.find(k => k.kural_adi !== 'Hafta Sonu' && k.tarih &&
                 k.tarih === now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0'));
             krediSebebi = `özel gün (${ozelGun ? ozelGun.kural_adi : 'Bilinmeyen özel gün'})`;
         } else {
@@ -108,113 +108,104 @@ cron.schedule('* * * * *', async () => {
                 }
             }
         }
-        
+
         const eskiKredi = aktifNobetci.kredi || 0;
         const yeniKredi = eskiKredi + eklenecekKredi;
         await db.updateNobetciKredi(aktifNobetci.id, yeniKredi);
-        
-        // Ayrıntılı kredi güncelleme logu
+
         logCreditUpdate(`${aktifNobetci.name}'in kredisi güncellendi: ${eklenecekKredi} kredi eklendi (${krediSebebi}). Eski kredi: ${eskiKredi}, Yeni kredi: ${yeniKredi}`);
         logDebug(`[Kredi Cron] ${aktifNobetci.name} kredisi güncellendi. Yeni Kredi: ${yeniKredi}`);
-        
     } catch (error) {
         console.error("[Kredi Cron] Hata:", error.message, error.stack);
     }
 }, { timezone: "Europe/Istanbul" });
 
-
-// --- BİLDİRİM GÖNDERME MANTIĞI GÜNCELLENMİŞ VARDİYA DEĞİŞİMİ ---
-let activeShiftChangeJobs = [];
-async function setupShiftChangeCronJobs() {
-    activeShiftChangeJobs.forEach(job => job.stop());
-    activeShiftChangeJobs = [];
-    logDebug("[Cron Setup] Vardiya değişim job'ları ayarlanıyor.");
-
-    const shiftTimeRanges = await db.getShiftTimeRanges();
-    const envIsTelegramActive = !!process.env.TELEGRAM_BOT_TOKEN; 
-
-    if (shiftTimeRanges && shiftTimeRanges.length === 2) {
-        const scheduleShiftChangeJob = async (shiftDetails, isFirstShift) => {
-            const [hour, minute] = shiftDetails.baslangic_saat.split(':').map(Number);
-            const cronTime = `${minute} ${hour} * * *`;
-            
-            const job = cron.schedule(cronTime, async () => {
-                const now = new Date();
-                const vardiyaLogAdi = isFirstShift ? "Gündüz" : "Gece";
-                console.log(`[Vardiya Değişimi] ${vardiyaLogAdi} cron tetiklendi.`);
-                
-                try {
-                    // Tatil günlerinde vardiya değişimi atlama mantığı
-                    const tumKurallar = await db.getAllKrediKurallari();
-                    const isWeekend = (now.getDay() === 0 || now.getDay() === 6);
-                    const isSpecialHoliday = (anlikOzelGunKredisiAl(now, tumKurallar) !== null);
-                    if (isWeekend || isSpecialHoliday) {
-                        console.log(`[Vardiya Değişimi] ${vardiyaLogAdi}: Tatil günü, vardiya değişimi atlandı.`);
-                        return;
-                    }
-
-                    // Hedef nöbetçi belirleme mantığı...
-                    let targetNobetci = null; // Bu kısım sizin mantığınıza göre doldurulmalı
-                    // ... (sizin getAsilHaftalikNobetci ve override mantığınız)
-
-                    if (targetNobetci && targetNobetci.id) {
-                        const currentActive = await db.getAktifNobetci();
-                        if (!currentActive || currentActive.id !== targetNobetci.id) {
-                            await db.setAktifNobetci(targetNobetci.id);
-                            const message = `Otomatik Vardiya Değişimi (${vardiyaLogAdi})\nYeni Aktif Nöbetçi: *${targetNobetci.name}*`;
-                            console.log(`[Vardiya Değişimi] Nöbetçi ayarlandı: ${targetNobetci.name}.`);
-                            
-                            if (envIsTelegramActive) {
-                                const usersToSend = await db.getAllNobetcilerWithTelegramId();
-                                for (const user of usersToSend) {
-                                    await sendTelegramMessageToGroup(user.telegram_id, message).catch(e => console.error(e.message));
-                                }
-                                console.log(`[Vardiya Değişimi] ${usersToSend.length} kullanıcıya bildirim gönderildi.`);
-                            }
-                        }
-                    }
-                } catch (error) {
-                    console.error(`[Vardiya Değişimi] ${vardiyaLogAdi} cron hatası:`, error.message, error.stack);
-                }
-            }, { timezone: "Europe/Istanbul" });
-            activeShiftChangeJobs.push(job);
-        };
-        await scheduleShiftChangeJob(shiftTimeRanges[0], true);
-        await scheduleShiftChangeJob(shiftTimeRanges[1], false);
-    }
-}
-cron.schedule('3 * * * *', setupShiftChangeCronJobs, { timezone: "Europe/Istanbul" });
-setupShiftChangeCronJobs();
-
-
-// --- BİLDİRİM GÖNDERME MANTIĞI GÜNCELLENMİŞ HAFTALIK ATAMA ---
-cron.schedule('0 7 * * 1', async () => {
-    console.log(`[Pzt 07:00 Cron] Haftalık nöbetçi belirleme çalışıyor...`);
+// --- YENİ GÜNDÜZ NÖBETÇİ ATAMASI (Pazartesi 09:00) ---
+cron.schedule('0 9 * * 1', async () => {
+    console.log(`[Pzt 09:00 Cron] Haftalık gündüz nöbetçi ataması çalışıyor...`);
+    
     try {
-        // ... (sizin haftalık hedef nöbetçi belirleme mantığınız)
-        let hedefNobetci = await getAsilHaftalikNobetci(new Date()); // Örnek
-        let atamaTuru = "Haftalık Atama";
-
+        const hedefNobetci = await getAsilHaftalikNobetci(new Date());
+        
         if (hedefNobetci && hedefNobetci.id) {
             const aktifSuAn = await db.getAktifNobetci();
+            
             if (!aktifSuAn || aktifSuAn.id !== hedefNobetci.id) {
                 await db.setAktifNobetci(hedefNobetci.id);
-                const message = `${atamaTuru} Değişimi:\nAktif Nöbetçi: *${hedefNobetci.name}*`;
-                console.log(`[Pzt 07:00 Cron] Nöbetçi ayarlandı: ${hedefNobetci.name}.`);
-
+                
+                const message = `Haftalık Gündüz Nöbetçi Ataması:\nAktif Nöbetçi: *${hedefNobetci.name}*`;
+                console.log(`[Pzt 09:00 Cron] Gündüz nöbetçisi ayarlandı: ${hedefNobetci.name}.`);
+                
                 const envIsTelegramActive = !!process.env.TELEGRAM_BOT_TOKEN;
                 if (envIsTelegramActive) {
                     const usersToSend = await db.getAllNobetcilerWithTelegramId();
                     for (const user of usersToSend) {
                         await sendTelegramMessageToGroup(user.telegram_id, message).catch(e => console.error(e.message));
                     }
-                    console.log(`[Pzt 07:00 Cron] ${usersToSend.length} kullanıcıya bildirim gönderildi.`);
+                    console.log(`[Pzt 09:00 Cron] ${usersToSend.length} kullanıcıya bildirim gönderildi.`);
                 }
             }
         }
     } catch (error) {
-        console.error("[Pzt 07:00 Cron] Hata:", error.message, error.stack);
+        console.error("[Pzt 09:00 Cron] Hata:", error.message, error.stack);
     }
 }, { timezone: "Europe/Istanbul" });
+
+// --- AKŞAM VARDİYA DEĞİŞİMİ ---
+async function setupEveningShiftCronJob() {
+    const shiftTimeRanges = await db.getShiftTimeRanges();
+    
+    if (shiftTimeRanges && shiftTimeRanges.length >= 2) {
+        const eveningShift = shiftTimeRanges[1];
+        const [hour, minute] = eveningShift.baslangic_saat.split(':').map(Number);
+        const cronTime = `${minute} ${hour} * * *`;
+        
+        cron.schedule(cronTime, async () => {
+            console.log(`[Akşam Vardiya] Cron tetiklendi (${eveningShift.baslangic_saat}).`);
+            
+            try {
+                const now = new Date();
+                
+                // Tatil kontrolü
+                const tumKurallar = await db.getAllKrediKurallari();
+                const isWeekend = (now.getDay() === 0 || now.getDay() === 6);
+                const isSpecialHoliday = (anlikOzelGunKredisiAl(now, tumKurallar) !== null);
+                
+                if (isWeekend || isSpecialHoliday) {
+                    console.log(`[Akşam Vardiya] Tatil günü, vardiya değişimi atlandı.`);
+                    return;
+                }
+                
+                // Bu haftanın asıl nöbetçisini al
+                const hedefNobetci = await getAsilHaftalikNobetci(new Date());
+                
+                if (hedefNobetci && hedefNobetci.id) {
+                    const currentActive = await db.getAktifNobetci();
+                    
+                    if (!currentActive || currentActive.id !== hedefNobetci.id) {
+                        await db.setAktifNobetci(hedefNobetci.id);
+                        
+                        const message = `Akşam Vardiya Değişimi\nYeni Aktif Nöbetçi: *${hedefNobetci.name}*`;
+                        console.log(`[Akşam Vardiya] Nöbetçi ayarlandı: ${hedefNobetci.name}.`);
+                        
+                        const envIsTelegramActive = !!process.env.TELEGRAM_BOT_TOKEN;
+                        if (envIsTelegramActive) {
+                            const usersToSend = await db.getAllNobetcilerWithTelegramId();
+                            for (const user of usersToSend) {
+                                await sendTelegramMessageToGroup(user.telegram_id, message).catch(e => console.error(e.message));
+                            }
+                            console.log(`[Akşam Vardiya] ${usersToSend.length} kullanıcıya bildirim gönderildi.`);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error(`[Akşam Vardiya] Cron hatası:`, error.message, error.stack);
+            }
+        }, { timezone: "Europe/Istanbul" });
+    }
+}
+
+// Akşam vardiya cron job'ını başlat
+setupEveningShiftCronJob();
 
 console.log('Tüm cron job tanımlamaları tamamlandı.');
