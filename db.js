@@ -179,30 +179,55 @@ db.setAktifNobetci = function(nobetciId) {
         }
 
         this.serialize(() => {
-            this.run("UPDATE Nobetciler SET is_aktif = 0, updated_at = CURRENT_TIMESTAMP", (err) => {
-                if (err) { 
-                    logger.error("DB Error (setAktifNobetci - step 1):", err);
-                    return reject(new Error('Aktif nöbetçi sıfırlanamadı'));
+            this.run("BEGIN TRANSACTION", (err) => {
+                if (err) {
+                    console.error("Transaction başlatma hatası:", err);
+                    return reject(err);
                 }
-                
-                if (nobetciId !== null && typeof nobetciId !== 'undefined') {
-                    this.run("UPDATE Nobetciler SET is_aktif = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [nobetciId], function(errUpdate) {
-                        if (errUpdate) { 
-                            logger.error("DB Error (setAktifNobetci - step 2):", errUpdate);
-                            return reject(new Error('Nöbetçi aktif olarak ayarlanamadı'));
-                        }
-                        if (this.changes === 0) {
-                            return reject(new Error('Nöbetçi bulunamadı'));
-                        }
-                        resolve();
-                    });
-                } else {
-                    resolve();
-                }
+
+                this.run("UPDATE Nobetciler SET is_aktif = 0, updated_at = CURRENT_TIMESTAMP", (err) => {
+                    if (err) {
+                        console.error("DB Error (setAktifNobetci - step 1):", err);
+                        this.run("ROLLBACK");
+                        return reject(new Error('Aktif nöbetçi sıfırlanamadı'));
+                    }
+
+                    if (nobetciId !== null && typeof nobetciId !== 'undefined') {
+                        this.run("UPDATE Nobetciler SET is_aktif = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [nobetciId], function(errUpdate) {
+                            if (errUpdate) {
+                                console.error("DB Error (setAktifNobetci - step 2):", errUpdate);
+                                this.run("ROLLBACK");
+                                return reject(new Error('Nöbetçi aktif olarak ayarlanamadı'));
+                            }
+
+                            if (this.changes === 0) {
+                                this.run("ROLLBACK");
+                                return reject(new Error('Nöbetçi bulunamadı'));
+                            }
+
+                            this.run("COMMIT", (commitErr) => {
+                                if (commitErr) {
+                                    console.error("Transaction commit hatası:", commitErr);
+                                    return reject(commitErr);
+                                }
+                                resolve();
+                            });
+                        });
+                    } else {
+                        this.run("COMMIT", (commitErr) => {
+                            if (commitErr) {
+                                console.error("Transaction commit hatası:", commitErr);
+                                return reject(commitErr);
+                            }
+                            resolve();
+                        });
+                    }
+                });
             });
         });
     });
 };
+
 
 db.getAktifNobetci = function() {
     return new Promise((resolve, reject) => {
