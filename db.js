@@ -1,7 +1,7 @@
 // Nobetciyim/db.js
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
-const fs = require('fs');
+const fs =require('fs');
 
 const logger = {
   info: (msg, ...args) => console.log(`[INFO] ${msg}`, ...args),
@@ -26,6 +26,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
 
 /**
  * GÜVENLİ VE DÜZELTİLMİŞ setAktifNobetci FONKSİYONU
+ * "updated_at" sütunu ile ilgili hata düzeltildi.
  */
 db.setAktifNobetci = function(nobetciId) {
     return new Promise((resolve, reject) => {
@@ -38,13 +39,15 @@ db.setAktifNobetci = function(nobetciId) {
                 if (err) return reject(new Error("Transaction başlatılamadı: " + err.message));
             });
 
-            db.run("UPDATE Nobetciler SET is_aktif = 0, updated_at = CURRENT_TIMESTAMP WHERE is_aktif = 1;", function(err) {
+            // "updated_at" sütunu sorgudan kaldırıldı.
+            db.run("UPDATE Nobetciler SET is_aktif = 0 WHERE is_aktif = 1;", function(err) {
                 if (err) {
                     db.run("ROLLBACK;");
                     return reject(new Error("Aktif nöbetçi sıfırlanamadı: " + err.message));
                 }
 
-                db.run("UPDATE Nobetciler SET is_aktif = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [nobetciId], function(errUpdate) {
+                // "updated_at" sütunu sorgudan kaldırıldı.
+                db.run("UPDATE Nobetciler SET is_aktif = 1 WHERE id = ?", [nobetciId], function(errUpdate) {
                     if (errUpdate) {
                         db.run("ROLLBACK;");
                         return reject(new Error("Nöbetçi aktif olarak ayarlanamadı: " + errUpdate.message));
