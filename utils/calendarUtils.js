@@ -1,11 +1,6 @@
-// utils/calendarUtils.js
+
 const db = require('../db');
 
-/**
- * Verilen bir tarihin ISO 8601 standardına göre hafta numarasını döndürür.
- * @param {Date} date - Hafta numarasını bulmak için tarih nesnesi.
- * @returns {number} Yılın hafta numarası (1-53).
- */
 function getWeekOfYear(date) {
     const target = new Date(date.valueOf());
     const dayNr = (date.getDay() + 6) % 7;
@@ -35,19 +30,12 @@ async function getAllNobetcilerFromDB() {
     });
 }
 
-/**
- * Belirtilen bir tarih için asıl nöbetçiyi (manuel atama veya otomatik rotasyon ile) belirler.
- * Bu fonksiyon, karmaşık ayarlar yerine basit ve güvenilir bir rotasyon kullanır.
- * @param {Date} date - Nöbetçiyi belirlemek için kullanılacak tarih.
- * @returns {Promise<Object|null>} Belirlenen nöbetçinin tüm bilgilerini veya bulunamazsa null döndürür.
- */
 async function getAsilHaftalikNobetci(date) {
     try {
         const yil = date.getFullYear();
         const hafta = getWeekOfYear(date);
 
-        // 1. Manuel atama (override) var mı diye kontrol et.
-        // db.js içinde getDutyOverride fonksiyonunun olduğundan emin olun.
+  
         if (typeof db.getDutyOverride === 'function') {
             const override = await db.getDutyOverride(yil, hafta);
             if (override && override.nobetci_id_override) {
@@ -64,8 +52,7 @@ async function getAsilHaftalikNobetci(date) {
             return null; // Nöbetçi yoksa null dön.
         }
 
-        // 3. Basit ve güvenilir rotasyon: Hafta numarasını nöbetçi sayısına bölerek sıradaki nöbetçiyi bul.
-        // (Hafta numarası 1'den başladığı için -1 yapılır)
+
         const nobetciIndex = (hafta - 1) % nobetciler.length;
         const asilNobetci = nobetciler[nobetciIndex];
         
