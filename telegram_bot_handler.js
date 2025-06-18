@@ -346,8 +346,8 @@ function initBot() {
 
             const weekInfo = getWeekInfo(nextWeekDate); // ISO hafta no ve yıl
             const aciklama = await getTakvimAciklamasi(weekInfo.year, weekInfo.week);
-            if (aciklama) {
-                mesaj += `📝 Açıklama: ${aciklama}\n`;
+            if (aciklama && aciklama.aciklama) {
+                message += `\n\n📝 *Hafta Notu:* ${aciklama.aciklama}`;
             }
 
             botInstance.sendMessage(chatId, mesaj, { parse_mode: 'Markdown' });
@@ -500,6 +500,8 @@ async function notifyAllOfDutyChange(newActiveGuardName, triggeredBy = "API") {
         console.error("Tüm kullanıcılara bildirim gönderilirken hata:", error.message);
     }
 }
+
+
 
 module.exports = {
     init: initBot,
