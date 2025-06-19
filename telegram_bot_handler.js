@@ -54,22 +54,37 @@ Başlamak için /menu yazabilirsiniz.
             return botInstance.sendMessage(chatId, "❌ Bu komutu kullanma yetkiniz yok. Lütfen önce sisteme kayıt olunuz.");
         }
 
-        const menuMessage = `
+        try {
+            // Güncel bilgileri al
+            const guncelNobetci = await db.getNobetciById(nobetci.id);
+            const aktifNobetci = await db.getAktifNobetci();
+            const buHaftaNobetci = await getAsilHaftalikNobetci(new Date());
+            
+            const menuMessage = `
 🏥 *Nöbetçi Sistemi - Ana Menü*
 
-Merhaba *${nobetci.name}*,
+Merhaba *${guncelNobetci.name}*,
+
+👨‍⚕️ *Aktif Nöbetçi:* ${aktifNobetci ? aktifNobetci.name : 'Yok'}
+📅 *Bu Haftanın Asıl Nöbetçisi:* ${buHaftaNobetci ? buHaftaNobetci.name : 'Belirlenemedi'}
+
+💰 *Kredi Durumunuz:*
+• Mevcut Kredi: *${guncelNobetci.kredi || 0}*
+• Ödenen Kredi: *${guncelNobetci.pay_edilen_kredi || 0}*
 
 📋 *Kullanılabilir Komutlar:*
-• /aktif_nobetci - Şu anki aktif nöbetçiyi görüntüle
-• /nobet_al - Nöbet devralma talebi gönder
-• /nobet_kredi_durum - Kredi durumunuzu kontrol edin
-• /gelecek_hafta_nobetci - Gelecek haftanın nöbetçisini görüntüle
-• /sifre_sifirla - Web paneli şifrenizi sıfırlayın
-
-ℹ️ *Bilgi:* Mevcut krediniz: *${nobetci.kredi || 0}*
-        `;
-        
-        botInstance.sendMessage(chatId, menuMessage, { parse_mode: 'Markdown' });
+• /aktif_nobetci - Aktif nöbetçi bilgisi
+• /nobet_al - Nöbet devralma talebi
+• /nobet_kredi_durum - Detaylı kredi durumu
+• /gelecek_hafta_nobetci - Gelecek hafta bilgisi
+• /sifre_sifirla - Şifre sıfırlama
+            `;
+            
+            botInstance.sendMessage(chatId, menuMessage, { parse_mode: 'Markdown' });
+        } catch (error) {
+            console.error("/menu hatası:", error);
+            botInstance.sendMessage(chatId, "❌ Menü bilgileri alınırken hata oluştu.");
+        }
     });
 
     // AKTİF NÖBETÇİ komutu
@@ -105,23 +120,64 @@ Merhaba *${nobetci.name}*,
         }
 
         try {
-            // Güncel kredi bilgisini veritabanından al
+            // Güncel kredi bilgisini ve diğer detayları al
             const guncelNobetci = await db.getNobetciById(nobetci.id);
             if (!guncelNobetci) {
                 return botInstance.sendMessage(chatId, "❌ Nöbetçi bilgisi bulunamadı.");
             }
 
-            const krediDurumuMessage = `
-💳 *Kredi Durumunuz*
+            // Kredi kurallarını al
+            const krediKurallari = await db.getAllKrediKurallari();
+            const nobetKredileri = await db.getShiftTimeRanges();
+            
+            // Tüm nöbetçilerin kredi durumunu al
+            const tumNobetciler = await new Promise((resolve, reject) => {
+                db.all("SELECT name, kredi, pay_edilen_kredi FROM Nobetciler ORDER BY kredi DESC", [], (err, rows) => {
+                    if (err) reject(err);
+                    else resolve(rows || []);
+                });
+            });
+
+            let krediDurumuMessage = `
+💳 *Detaylı Kredi Durumu*
 
 👤 *Nöbetçi:* ${guncelNobetci.name}
 💰 *Mevcut Kredi:* ${guncelNobetci.kredi || 0}
 📊 *Ödenen Kredi:* ${guncelNobetci.pay_edilen_kredi || 0}
+📞 *Telefon:* ${guncelNobetci.telefon_no || 'Kayıtlı değil'}
 
-ℹ️ *Bilgi:* 
-• Pozitif kredi = Fazla nöbet tutmuşsunuz
-• Negatif kredi = Nöbet borcunuz var
-            `;
+📋 *Kredi Kuralları:*
+`;
+
+            // Kredi kurallarını listele
+            if (krediKurallari.length > 0) {
+                krediKurallari.forEach(kural => {
+                    krediDurumuMessage += `• ${kural.kural_adi}: ${kural.kredi} kredi\n`;
+                });
+            } else {
+                krediDurumuMessage += `• Henüz kural tanımlanmamış\n`;
+            }
+
+            krediDurumuMessage += `\n⏰ *Nöbet Saatleri ve Kredileri:*\n`;
+            
+            // Nöbet kredilerini listele
+            if (nobetKredileri.length > 0) {
+                nobetKredileri.forEach(zaman => {
+                    krediDurumuMessage += `• ${zaman.baslangic_saat} - ${zaman.bitis_saat}: ${zaman.kredi_dakika} kredi/dk\n`;
+                });
+            } else {
+                krediDurumuMessage += `• Henüz zaman dilimi tanımlanmamış\n`;
+            }
+
+            krediDurumuMessage += `\n📊 *Genel Kredi Sıralaması:*\n`;
+            
+            // İlk 5 nöbetçiyi göster
+            tumNobetciler.slice(0, 5).forEach((n, index) => {
+                const emoji = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🔸';
+                krediDurumuMessage += `${emoji} ${n.name}: ${n.kredi || 0}\n`;
+            });
+
+            krediDurumuMessage += `\nℹ️ *Açıklama:*\n• Pozitif kredi = Fazla nöbet tutmuşsunuz\n• Negatif kredi = Nöbet borcunuz var\n• Kredi hesabı dakika bazlıdır`;
             
             botInstance.sendMessage(chatId, krediDurumuMessage, { parse_mode: 'Markdown' });
         } catch (error) {
@@ -140,32 +196,30 @@ Merhaba *${nobetci.name}*,
         }
 
         try {
-            // API'ye şifre sıfırlama isteği gönder
-            const response = await axios.post(`${localApiBaseUrl}/reset-password`, {
-                nobetciId: nobetci.id
-            }, {
-                headers: {
-                    'Authorization': `Bearer ${INTERNAL_API_TOKEN}`,
-                    'Content-Type': 'application/json'
-                }
+            // Rastgele şifre oluştur
+            const newRandomPassword = Math.random().toString(36).slice(-8);
+            
+            // Veritabanında şifreyi güncelle (hash'lemek gerekiyorsa burada yapın)
+            await new Promise((resolve, reject) => {
+                db.run("UPDATE Nobetciler SET password = ? WHERE id = ?", [newRandomPassword, nobetci.id], function(err) {
+                    if (err) reject(err);
+                    else if (this.changes === 0) reject(new Error("Nöbetçi bulunamadı"));
+                    else resolve();
+                });
             });
 
-            if (response.data.success) {
-                const message = `
+            const message = `
 🔐 *Şifre Sıfırlandı*
 
 ✅ Web paneli şifreniz başarıyla sıfırlandı.
-🆕 *Yeni şifreniz:* \`${response.data.newPassword}\`
+🆕 *Yeni şifreniz:* \`${newRandomPassword}\`
 
-🌐 Web paneline giriş için: ${process.env.WEB_URL || 'Web adresi'}
-👤 Kullanıcı adınız: ${nobetci.name}
+🌐 Web paneline giriş için sistem yöneticinizden adres alın
+👤 *Kullanıcı adınız:* ${nobetci.name}
 
 ⚠️ *Güvenlik:* Bu şifreyi not alın ve güvenli bir yerde saklayın. İlk girişte değiştirmeniz önerilir.
-                `;
-                botInstance.sendMessage(chatId, message, { parse_mode: 'Markdown' });
-            } else {
-                botInstance.sendMessage(chatId, "❌ Şifre sıfırlama işlemi başarısız oldu. Lütfen tekrar deneyin.");
-            }
+            `;
+            botInstance.sendMessage(chatId, message, { parse_mode: 'Markdown' });
         } catch (error) {
             console.error("/sifre_sifirla hatası:", error);
             botInstance.sendMessage(chatId, "❌ Şifre sıfırlama sırasında hata oluştu. Lütfen sistem yöneticisiyle iletişime geçin.");
@@ -255,14 +309,49 @@ Merhaba *${nobetci.name}*,
         }
         try {
             const today = new Date();
-            const nextWeekDate = new Date(today.setDate(today.getDate() + 7));
+            const nextWeekDate = new Date(today.getTime());
+            nextWeekDate.setDate(today.getDate() + 7);
+            
             const gelecekHaftaNobetci = await getAsilHaftalikNobetci(nextWeekDate);
+            const buHaftaNobetci = await getAsilHaftalikNobetci(today);
 
-            if (!gelecekHaftaNobetci) {
-                return botInstance.sendMessage(chatId, "❌ Gelecek hafta için nöbetçi bilgisi bulunamadı.");
+            // Bu haftanın bilgilerini al
+            const buHaftaYil = today.getFullYear();
+            const buHaftaNo = getWeekOfYear(today);
+            const buHaftaAciklama = await db.getDutyOverride(buHaftaYil, buHaftaNo);
+
+            // Gelecek haftanın bilgilerini al
+            const gelecekHaftaYil = nextWeekDate.getFullYear();
+            const gelecekHaftaNo = getWeekOfYear(nextWeekDate);
+            const gelecekHaftaAciklama = await db.getDutyOverride(gelecekHaftaYil, gelecekHaftaNo);
+
+            let message = `
+📅 *Haftalık Nöbetçi Bilgileri*
+
+📍 *Bu Hafta (${buHaftaNo}. hafta):*
+👨‍⚕️ *Nöbetçi:* ${buHaftaNobetci ? buHaftaNobetci.name : 'Belirlenemedi'}`;
+
+            if (buHaftaAciklama && buHaftaAciklama.nobetci_id_override) {
+                message += `\n🔄 *Override:* ${buHaftaAciklama.nobetci_adi_override || 'Bilinmiyor'}`;
+            }
+
+            message += `\n\n📍 *Gelecek Hafta (${gelecekHaftaNo}. hafta):*
+👨‍⚕️ *Nöbetçi:* ${gelecekHaftaNobetci ? gelecekHaftaNobetci.name : 'Belirlenemedi'}`;
+
+            if (gelecekHaftaAciklama && gelecekHaftaAciklama.nobetci_id_override) {
+                message += `\n🔄 *Override:* ${gelecekHaftaAciklama.nobetci_adi_override || 'Bilinmiyor'}`;
+            }
+
+            // Açıklamaları ekle
+            if (buHaftaAciklama && buHaftaAciklama.aciklama) {
+                message += `\n\n📝 *Bu Hafta Açıklaması:*\n${buHaftaAciklama.aciklama}`;
+            }
+
+            if (gelecekHaftaAciklama && gelecekHaftaAciklama.aciklama) {
+                message += `\n\n📝 *Gelecek Hafta Açıklaması:*\n${gelecekHaftaAciklama.aciklama}`;
             }
             
-            botInstance.sendMessage(chatId, `📅 Gelecek Haftanın Nöbetçisi: *${gelecekHaftaNobetci.name}*`, { parse_mode: 'Markdown' });
+            botInstance.sendMessage(chatId, message, { parse_mode: 'Markdown' });
         } catch (error) {
             console.error("/gelecek_hafta_nobetci hatası:", error);
             botInstance.sendMessage(chatId, "❌ Bilgi alınırken bir hata oluştu.");
