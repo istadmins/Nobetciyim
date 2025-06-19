@@ -3,6 +3,7 @@ const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 const db = require('./db');
 const { getAsilHaftalikNobetci, getWeekOfYear } = require('./utils/calendarUtils');
+
 const botToken = process.env.TELEGRAM_BOT_TOKEN;
 const localApiBaseUrl = `http://localhost:${process.env.PORT || 80}/api`;
 const INTERNAL_API_TOKEN = process.env.INTERNAL_API_TOKEN;
@@ -15,6 +16,7 @@ function initBot() {
         console.error("HATA: TELEGRAM_BOT_TOKEN ayarlanmamış.");
         return;
     }
+
     if (botInstance) return botInstance;
 
     botInstance = new TelegramBot(botToken, { polling: true });
@@ -27,21 +29,20 @@ function initBot() {
     // START komutu
     botInstance.onText(/^\/start$/, async (msg) => {
         const chatId = msg.chat.id;
-        const welcomeMessage = `
-🏥 *Nöbetçi Sistemi*
+        const welcomeMessage = `🏥 *Nöbetçi Sistemi*
 
 Merhaba! Bu bot nöbetçi sistemini yönetmenize yardımcı olur.
 
-Kullanılabilir komutlar:
-/menu - Ana menü
-/aktif_nobetci - Aktif nöbetçiyi görüntüle
-/nobet_al - Nöbet al
-/nobet_kredi_durum - Kredi durumunu görüntüle
-/gelecek_hafta_nobetci - Gelecek haftanın nöbetçisi
-/sifre_sifirla - Şifre sıfırlama
+*Kullanılabilir komutlar:*
+• /menu - Ana menü
+• /aktif_nobetci - Aktif nöbetçiyi görüntüle
+• /nobet_al - Nöbet al
+• /nobet_kredi_durum - Kredi durumunu görüntüle
+• /gelecek_hafta_nobetci - Gelecek haftanın nöbetçisi
+• /sifre_sifirla - Şifre sıfırlama
 
-Başlamak için /menu yazabilirsiniz.
-        `;
+Başlamak için /menu yazabilirsiniz.`;
+        
         botInstance.sendMessage(chatId, welcomeMessage, { parse_mode: 'Markdown' });
     });
 
@@ -55,14 +56,15 @@ Başlamak için /menu yazabilirsiniz.
             if (!nobetci) {
                 return botInstance.sendMessage(chatId, "❌ Bu komutu kullanma yetkiniz yok. Lütfen önce sisteme kayıt olunuz.");
             }
-
+            
             // Güncel bilgileri al
             const guncelNobetci = await db.getNobetciById(nobetci.id);
             const aktifNobetci = await db.getAktifNobetci();
+            
+            // Bu haftanın nöbetçisini await ile al
             const buHaftaNobetci = await getAsilHaftalikNobetci(new Date());
             
-            const menuMessage = `
-🏥 *Nöbetçi Sistemi - Ana Menü*
+            const menuMessage = `🏥 *Nöbetçi Sistemi - Ana Menü*
 
 Merhaba *${guncelNobetci.name}*,
 
@@ -70,21 +72,20 @@ Merhaba *${guncelNobetci.name}*,
 📅 *Bu Haftanın Asıl Nöbetçisi:* ${buHaftaNobetci ? buHaftaNobetci.name : 'Belirlenemedi'}
 
 💰 *Kredi Durumunuz:*
-• Mevcut Kredi: *${guncelNobetci.kredi || 0}*
-• Ödenen Kredi: *${guncelNobetci.pay_edilen_kredi || 0}*
+• *Mevcut Kredi:* ${guncelNobetci.kredi || 0}
+• *Ödenen Kredi:* ${guncelNobetci.pay_edilen_kredi || 0}
 
 📋 *Kullanılabilir Komutlar:*
 • /aktif_nobetci - Aktif nöbetçi bilgisi
 • /nobet_al - Nöbet devralma talebi
 • /nobet_kredi_durum - Detaylı kredi durumu
 • /gelecek_hafta_nobetci - Gelecek hafta bilgisi
-• /sifre_sifirla - Şifre sıfırlama
-            `;
+• /sifre_sifirla - Şifre sıfırlama`;
             
             botInstance.sendMessage(chatId, menuMessage, { parse_mode: 'Markdown' });
         } catch (error) {
             console.error("/menu hatası:", error);
-            botInstance.sendMessage(chatId, "❌ Menü bilgileri alınırken hata oluştu.");
+            botInstance.sendMessage(chatId, "❌ Menü bilgileri alınırken hata oluştu. Lütfen tekrar deneyin.");
         }
     });
 
@@ -92,7 +93,7 @@ Merhaba *${guncelNobetci.name}*,
     botInstance.onText(/^\/aktif_nobetci$/, async (msg) => {
         const chatId = msg.chat.id;
         const nobetci = await getAuthorizedNobetciByTelegramId(chatId);
-        
+
         if (!nobetci) {
             return botInstance.sendMessage(chatId, "❌ Bu komutu kullanma yetkiniz yok.");
         }
@@ -102,7 +103,7 @@ Merhaba *${guncelNobetci.name}*,
             if (!aktifNobetci) {
                 return botInstance.sendMessage(chatId, "ℹ️ Şu anda aktif nöbetçi bulunmuyor.");
             }
-            
+
             const message = `👨‍⚕️ *Aktif Nöbetçi:* ${aktifNobetci.name}\n💳 *Kredi:* ${aktifNobetci.kredi || 0}`;
             botInstance.sendMessage(chatId, message, { parse_mode: 'Markdown' });
         } catch (error) {
@@ -115,7 +116,7 @@ Merhaba *${guncelNobetci.name}*,
     botInstance.onText(/^\/nobet_kredi_durum$/, async (msg) => {
         const chatId = msg.chat.id;
         const nobetci = await getAuthorizedNobetciByTelegramId(chatId);
-        
+
         if (!nobetci) {
             return botInstance.sendMessage(chatId, "❌ Bu komutu kullanma yetkiniz yok.");
         }
@@ -130,7 +131,7 @@ Merhaba *${guncelNobetci.name}*,
             // Kredi kurallarını al
             const krediKurallari = await db.getAllKrediKurallari();
             const nobetKredileri = await db.getShiftTimeRanges();
-            
+
             // Tüm nöbetçilerin kredi durumunu al
             const tumNobetciler = await new Promise((resolve, reject) => {
                 db.all("SELECT name, kredi, pay_edilen_kredi FROM Nobetciler ORDER BY kredi DESC", [], (err, rows) => {
@@ -139,8 +140,7 @@ Merhaba *${guncelNobetci.name}*,
                 });
             });
 
-            let krediDurumuMessage = `
-💳 *Detaylı Kredi Durumu*
+            let krediDurumuMessage = `💳 *Detaylı Kredi Durumu*
 
 👤 *Nöbetçi:* ${guncelNobetci.name}
 💰 *Mevcut Kredi:* ${guncelNobetci.kredi || 0}
@@ -160,7 +160,7 @@ Merhaba *${guncelNobetci.name}*,
             }
 
             krediDurumuMessage += `\n⏰ *Nöbet Saatleri ve Kredileri:*\n`;
-            
+
             // Nöbet kredilerini listele
             if (nobetKredileri.length > 0) {
                 nobetKredileri.forEach(zaman => {
@@ -171,16 +171,16 @@ Merhaba *${guncelNobetci.name}*,
             }
 
             krediDurumuMessage += `\n📊 *Genel Kredi Sıralaması:*\n`;
-            
+
             // Güncel kullanıcının kredi durumunu bul
             const benimKredim = guncelNobetci.kredi || 0;
             const gunlukKredi = 2396; // Bir günlük kredi miktarı
-            
+
             // İlk 5 nöbetçiyi göster ve durumu hesapla
             tumNobetciler.slice(0, 5).forEach((n, index) => {
                 const emoji = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🔸';
                 krediDurumuMessage += `${emoji} ${n.name}: ${n.kredi || 0}`;
-                
+
                 if (n.name === guncelNobetci.name) {
                     krediDurumuMessage += ` ← *SİZ*`;
                 }
@@ -189,31 +189,31 @@ Merhaba *${guncelNobetci.name}*,
 
             // Kullanıcının diğer nöbetçilerle karşılaştırmasını ekle
             krediDurumuMessage += `\n📈 *Durumunuz:*\n`;
-            
+
             // Kendinden önde ve geride olanları bul
             const ondekilet = tumNobetciler.filter(n => (n.kredi || 0) > benimKredim);
             const geridekilet = tumNobetciler.filter(n => (n.kredi || 0) < benimKredim);
-            
+
             if (ondekilet.length > 0) {
                 const enOnde = ondekilet[ondekilet.length - 1]; // En yakın önde olan
                 const fark = (enOnde.kredi || 0) - benimKredim;
                 const gunFarki = (fark / gunlukKredi).toFixed(1);
                 krediDurumuMessage += `🔺 ${enOnde.name}'den ${gunFarki} gün geride\n`;
             }
-            
+
             if (geridekilet.length > 0) {
                 const enGerde = geridekilet[0]; // En yakın geride olan
                 const fark = benimKredim - (enGerde.kredi || 0);
                 const gunFarki = (fark / gunlukKredi).toFixed(1);
                 krediDurumuMessage += `🔻 ${enGerde.name}'den ${gunFarki} gün önde\n`;
             }
-            
+
             if (ondekilet.length === 0 && geridekilet.length === 0) {
                 krediDurumuMessage += `🎯 Herkes aynı seviyede\n`;
             }
 
             krediDurumuMessage += `\nℹ️ *Açıklama:*\n• Pozitif kredi = Fazla nöbet tutmuşsunuz\n• Negatif kredi = Nöbet borcunuz var\n• Kredi hesabı dakika bazlıdır\n• 1 gün = ${gunlukKredi} kredi`;
-            
+
             botInstance.sendMessage(chatId, krediDurumuMessage, { parse_mode: 'Markdown' });
         } catch (error) {
             console.error("/nobet_kredi_durum hatası:", error);
@@ -225,7 +225,7 @@ Merhaba *${guncelNobetci.name}*,
     botInstance.onText(/^\/sifre_sifirla$/, async (msg) => {
         const chatId = msg.chat.id;
         const nobetci = await getAuthorizedNobetciByTelegramId(chatId);
-        
+
         if (!nobetci) {
             return botInstance.sendMessage(chatId, "❌ Bu komutu kullanma yetkiniz yok.");
         }
@@ -233,7 +233,7 @@ Merhaba *${guncelNobetci.name}*,
         try {
             // Rastgele şifre oluştur
             const newRandomPassword = Math.random().toString(36).slice(-8);
-            
+
             // Veritabanında şifreyi güncelle (hash'lemek gerekiyorsa burada yapın)
             await new Promise((resolve, reject) => {
                 db.run("UPDATE Nobetciler SET password = ? WHERE id = ?", [newRandomPassword, nobetci.id], function(err) {
@@ -243,8 +243,7 @@ Merhaba *${guncelNobetci.name}*,
                 });
             });
 
-            const message = `
-🔐 *Şifre Sıfırlandı*
+            const message = `🔐 *Şifre Sıfırlandı*
 
 ✅ Web paneli şifreniz başarıyla sıfırlandı.
 🆕 *Yeni şifreniz:* \`${newRandomPassword}\`
@@ -252,8 +251,8 @@ Merhaba *${guncelNobetci.name}*,
 🌐 Web paneline giriş için sistem yöneticinizden adres alın
 👤 *Kullanıcı adınız:* ${nobetci.name}
 
-⚠️ *Güvenlik:* Bu şifreyi not alın ve güvenli bir yerde saklayın. İlk girişte değiştirmeniz önerilir.
-            `;
+⚠️ *Güvenlik:* Bu şifreyi not alın ve güvenli bir yerde saklayın. İlk girişte değiştirmeniz önerilir.`;
+
             botInstance.sendMessage(chatId, message, { parse_mode: 'Markdown' });
         } catch (error) {
             console.error("/sifre_sifirla hatası:", error);
@@ -261,7 +260,7 @@ Merhaba *${guncelNobetci.name}*,
         }
     });
 
-    // NÖBET AL komutu (mevcut kod)
+    // NÖBET AL komutu
     botInstance.onText(/^\/nobet_al$/, async (msg) => {
         const requesterTelegramId = String(msg.chat.id);
         const requester = await getAuthorizedNobetciByTelegramId(requesterTelegramId);
@@ -301,7 +300,7 @@ Merhaba *${guncelNobetci.name}*,
 
             const requestId = `ntr_${Date.now()}`;
             const approvalMessage = `Merhaba *${approver.name}*,\n*${requester.name}* nöbeti devralmak istiyor. Onaylıyor musunuz? (2 dk süreniz var)`;
-            
+
             const sentMessage = await botInstance.sendMessage(approver.telegram_id, approvalMessage, {
                 parse_mode: 'Markdown',
                 reply_markup: {
@@ -315,7 +314,11 @@ Merhaba *${guncelNobetci.name}*,
             const timeoutId = setTimeout(() => {
                 if (pendingTransferRequests[requestId]) {
                     delete pendingTransferRequests[requestId];
-                    botInstance.editMessageText(`Bu istek zaman aşımına uğradı.`, { chat_id: sentMessage.chat.id, message_id: sentMessage.message_id, reply_markup: null });
+                    botInstance.editMessageText(`Bu istek zaman aşımına uğradı.`, {
+                        chat_id: sentMessage.chat.id,
+                        message_id: sentMessage.message_id,
+                        reply_markup: null
+                    });
                     botInstance.sendMessage(requester.telegram_id, `❌ Nöbet devir isteğiniz *${approver.name}* tarafından zamanında yanıtlanmadı.`, { parse_mode: 'Markdown' });
                 }
             }, 2 * 60 * 1000); // 2 dakika
@@ -335,18 +338,20 @@ Merhaba *${guncelNobetci.name}*,
         }
     });
 
-    // GELECEK HAFTA NÖBETÇİ komutu (düzeltilmiş)
+    // GELECEK HAFTA NÖBETÇİ komutu
     botInstance.onText(/^\/gelecek_hafta_nobetci$/, async (msg) => {
         const chatId = msg.chat.id;
         const nobetciYetkili = await getAuthorizedNobetciByTelegramId(chatId);
+        
         if (!nobetciYetkili) {
             return botInstance.sendMessage(chatId, "❌ Bu komutu kullanma yetkiniz bulunmamaktadır.");
         }
+        
         try {
             const today = new Date();
             const nextWeekDate = new Date(today.getTime());
             nextWeekDate.setDate(today.getDate() + 7);
-            
+
             const gelecekHaftaNobetci = await getAsilHaftalikNobetci(nextWeekDate);
             const buHaftaNobetci = await getAsilHaftalikNobetci(today);
 
@@ -360,8 +365,7 @@ Merhaba *${guncelNobetci.name}*,
             const gelecekHaftaNo = getWeekOfYear(nextWeekDate);
             const gelecekHaftaAciklama = await db.getDutyOverride(gelecekHaftaYil, gelecekHaftaNo);
 
-            let message = `
-📅 *Haftalık Nöbetçi Bilgileri*
+            let message = `📅 *Haftalık Nöbetçi Bilgileri*
 
 📍 *Bu Hafta (${buHaftaNo}. hafta):*
 👨‍⚕️ *Nöbetçi:* ${buHaftaNobetci ? buHaftaNobetci.name : 'Belirlenemedi'}`;
@@ -385,7 +389,7 @@ Merhaba *${guncelNobetci.name}*,
             if (gelecekHaftaAciklama && gelecekHaftaAciklama.aciklama) {
                 message += `\n\n📝 *Gelecek Hafta Açıklaması:*\n${gelecekHaftaAciklama.aciklama}`;
             }
-            
+
             botInstance.sendMessage(chatId, message, { parse_mode: 'Markdown' });
         } catch (error) {
             console.error("/gelecek_hafta_nobetci hatası:", error);
@@ -393,7 +397,7 @@ Merhaba *${guncelNobetci.name}*,
         }
     });
 
-    // Callback query handler (mevcut kod)
+    // Callback query handler
     botInstance.on('callback_query', async (callbackQuery) => {
         const [action, requestId] = callbackQuery.data.split('_');
         const request = pendingTransferRequests[requestId];
@@ -408,22 +412,35 @@ Merhaba *${guncelNobetci.name}*,
 
         clearTimeout(request.timeoutId);
         delete pendingTransferRequests[requestId];
-        
-        await botInstance.editMessageReplyMarkup({inline_keyboard: []}, { chat_id: callbackQuery.message.chat.id, message_id: request.messageId });
+
+        await botInstance.editMessageReplyMarkup({inline_keyboard: []}, {
+            chat_id: callbackQuery.message.chat.id,
+            message_id: request.messageId
+        });
 
         if (action === 'approve') {
             try {
                 await db.setAktifNobetci(request.requester.id);
                 botInstance.sendMessage(request.requester.telegram_id, `✅ Nöbet devir isteğiniz *${request.approver.name}* tarafından onaylandı.`, { parse_mode: 'Markdown' });
-                botInstance.editMessageText(`✅ İstek onaylandı. Nöbet *${request.requester.name}*'a devredildi.`, { chat_id: callbackQuery.message.chat.id, message_id: request.messageId, parse_mode: 'Markdown' });
+                botInstance.editMessageText(`✅ İstek onaylandı. Nöbet *${request.requester.name}*'a devredildi.`, {
+                    chat_id: callbackQuery.message.chat.id,
+                    message_id: request.messageId,
+                    parse_mode: 'Markdown'
+                });
                 notifyAllOfDutyChange(request.requester.name, "Onaylı Devir");
             } catch (error) {
                 botInstance.sendMessage(request.requester.telegram_id, `❌ Nöbet aktarılırken API hatası oluştu.`);
-                botInstance.editMessageText(`❌ API hatası! Nöbet devredilemedi.`, { chat_id: callbackQuery.message.chat.id, message_id: request.messageId });
+                botInstance.editMessageText(`❌ API hatası! Nöbet devredilemedi.`, {
+                    chat_id: callbackQuery.message.chat.id,
+                    message_id: request.messageId
+                });
             }
         } else { // reject
             botInstance.sendMessage(request.requester.telegram_id, `❌ Nöbet devir isteğiniz *${request.approver.name}* tarafından reddedildi.`, { parse_mode: 'Markdown' });
-            botInstance.editMessageText(`❌ İstek reddedildi.`, { chat_id: callbackQuery.message.chat.id, message_id: request.messageId });
+            botInstance.editMessageText(`❌ İstek reddedildi.`, {
+                chat_id: callbackQuery.message.chat.id,
+                message_id: request.messageId
+            });
         }
         botInstance.answerCallbackQuery(callbackQuery.id);
     });
@@ -435,7 +452,7 @@ async function notifyAllOfDutyChange(newActiveGuardName, triggeredBy = "API") {
     try {
         const allNobetcilerWithTelegram = await db.getAllNobetcilerWithTelegramId();
         const message = `🔄 *Nöbet Değişikliği*\n\n👨‍⚕️ Yeni aktif nöbetçi: *${newActiveGuardName}*\n📍 Tetikleyen: ${triggeredBy}`;
-        
+
         for (const nobetci of allNobetcilerWithTelegram) {
             if (nobetci.telegram_id && botInstance) {
                 try {
