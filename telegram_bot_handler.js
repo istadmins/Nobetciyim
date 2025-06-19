@@ -46,7 +46,7 @@ Başlamak için /menu yazabilirsiniz.`;
         botInstance.sendMessage(chatId, welcomeMessage, { parse_mode: 'Markdown' });
     });
 
-  // MENU komutu (Markdown hatası düzeltildi)
+// MENU komutu (kırmızı alanlar kaldırıldı)
 botInstance.onText(/^\/menu$/, async (msg) => {
     const chatId = msg.chat.id;
     
@@ -59,29 +59,23 @@ botInstance.onText(/^\/menu$/, async (msg) => {
         
         // Güncel bilgileri al
         const guncelNobetci = await db.getNobetciById(nobetci.id);
-        const aktifNobetci = await db.getAktifNobetci();
-        const buHaftaNobetci = await getAsilHaftalikNobetci(new Date());
         
-        // Markdown formatını düzelt
-        const menuMessage = `🏥 *Nöbetçi Sistemi - Ana Menü*
+        const menuMessage = `🏥 Nöbetçi Sistemi - Ana Menü
 
-Merhaba *${guncelNobetci.name}*,
+Merhaba ${guncelNobetci.name},
 
-👨‍⚕️ *Aktif Nöbetçi:* ${aktifNobetci ? aktifNobetci.name : 'Yok'}
-📅 *Bu Haftanın Asıl Nöbetçisi:* ${buHaftaNobetci ? buHaftaNobetci.name : 'Belirlenemedi'}
-
-💰 *Kredi Durumunuz:*
+💰 Kredi Durumunuz:
 • Mevcut Kredi: ${guncelNobetci.kredi || 0}
 • Ödenen Kredi: ${guncelNobetci.pay_edilen_kredi || 0}
 
-📋 *Kullanılabilir Komutlar:*
-• /aktif\\_nobetci - Aktif nöbetçi bilgisi
-• /nobet\\_al - Nöbet devralma talebi  
-• /nobet\\_kredi\\_durum - Detaylı kredi durumu
-• /gelecek\\_hafta\\_nobetci - Gelecek hafta bilgisi
-• /sifre\\_sifirla - Şifre sıfırlama`;
+📋 Kullanılabilir Komutlar:
+• /aktif_nobetci - Aktif nöbetçi bilgisi
+• /nobet_al - Nöbet devralma talebi
+• /nobet_kredi_durum - Detaylı kredi durumu
+• /gelecek_hafta_nobetci - Gelecek hafta bilgisi
+• /sifre_sifirla - Şifre sıfırlama`;
         
-        botInstance.sendMessage(chatId, menuMessage, { parse_mode: 'Markdown' });
+        botInstance.sendMessage(chatId, menuMessage);
     } catch (error) {
         console.error("/menu hatası:", error);
         botInstance.sendMessage(chatId, "❌ Menü bilgileri alınırken hata oluştu. Lütfen tekrar deneyin.");
@@ -338,64 +332,58 @@ Merhaba *${guncelNobetci.name}*,
         }
     });
 
-    // GELECEK HAFTA NÖBETÇİ komutu
-    botInstance.onText(/^\/gelecek_hafta_nobetci$/, async (msg) => {
-        const chatId = msg.chat.id;
-        const nobetciYetkili = await getAuthorizedNobetciByTelegramId(chatId);
-        
-        if (!nobetciYetkili) {
-            return botInstance.sendMessage(chatId, "❌ Bu komutu kullanma yetkiniz bulunmamaktadır.");
+
+// GELECEK HAFTA NÖBETÇİ komutu (override bilgisi kaldırıldı)
+botInstance.onText(/^\/gelecek_hafta_nobetci$/, async (msg) => {
+    const chatId = msg.chat.id;
+    const nobetciYetkili = await getAuthorizedNobetciByTelegramId(chatId);
+    
+    if (!nobetciYetkili) {
+        return botInstance.sendMessage(chatId, "❌ Bu komutu kullanma yetkiniz bulunmamaktadır.");
+    }
+    
+    try {
+        const today = new Date();
+        const nextWeekDate = new Date(today.getTime());
+        nextWeekDate.setDate(today.getDate() + 7);
+
+        const gelecekHaftaNobetci = await getAsilHaftalikNobetci(nextWeekDate);
+        const buHaftaNobetci = await getAsilHaftalikNobetci(today);
+
+        // Bu haftanın bilgilerini al
+        const buHaftaYil = today.getFullYear();
+        const buHaftaNo = getWeekOfYear(today);
+        const buHaftaAciklama = await db.getDutyOverride(buHaftaYil, buHaftaNo);
+
+        // Gelecek haftanın bilgilerini al
+        const gelecekHaftaYil = nextWeekDate.getFullYear();
+        const gelecekHaftaNo = getWeekOfYear(nextWeekDate);
+        const gelecekHaftaAciklama = await db.getDutyOverride(gelecekHaftaYil, gelecekHaftaNo);
+
+        let message = `📅 Haftalık Nöbetçi Bilgileri
+
+📍 Bu Hafta (${buHaftaNo}. hafta):
+👨‍⚕️ Nöbetçi: ${buHaftaNobetci ? buHaftaNobetci.name : 'Belirlenemedi'}
+
+📍 Gelecek Hafta (${gelecekHaftaNo}. hafta):
+👨‍⚕️ Nöbetçi: ${gelecekHaftaNobetci ? gelecekHaftaNobetci.name : 'Belirlenemedi'}`;
+
+        // Açıklamaları ekle
+        if (buHaftaAciklama && buHaftaAciklama.aciklama) {
+            message += `\n\n📝 Bu Hafta Açıklaması:\n${buHaftaAciklama.aciklama}`;
         }
-        
-        try {
-            const today = new Date();
-            const nextWeekDate = new Date(today.getTime());
-            nextWeekDate.setDate(today.getDate() + 7);
 
-            const gelecekHaftaNobetci = await getAsilHaftalikNobetci(nextWeekDate);
-            const buHaftaNobetci = await getAsilHaftalikNobetci(today);
-
-            // Bu haftanın bilgilerini al
-            const buHaftaYil = today.getFullYear();
-            const buHaftaNo = getWeekOfYear(today);
-            const buHaftaAciklama = await db.getDutyOverride(buHaftaYil, buHaftaNo);
-
-            // Gelecek haftanın bilgilerini al
-            const gelecekHaftaYil = nextWeekDate.getFullYear();
-            const gelecekHaftaNo = getWeekOfYear(nextWeekDate);
-            const gelecekHaftaAciklama = await db.getDutyOverride(gelecekHaftaYil, gelecekHaftaNo);
-
-            let message = `📅 *Haftalık Nöbetçi Bilgileri*
-
-📍 *Bu Hafta (${buHaftaNo}. hafta):*
-👨‍⚕️ *Nöbetçi:* ${buHaftaNobetci ? buHaftaNobetci.name : 'Belirlenemedi'}`;
-
-            if (buHaftaAciklama && buHaftaAciklama.nobetci_id_override) {
-                message += `\n🔄 *Override:* ${buHaftaAciklama.nobetci_adi_override || 'Bilinmiyor'}`;
-            }
-
-            message += `\n\n📍 *Gelecek Hafta (${gelecekHaftaNo}. hafta):*
-👨‍⚕️ *Nöbetçi:* ${gelecekHaftaNobetci ? gelecekHaftaNobetci.name : 'Belirlenemedi'}`;
-
-            if (gelecekHaftaAciklama && gelecekHaftaAciklama.nobetci_id_override) {
-                message += `\n🔄 *Override:* ${gelecekHaftaAciklama.nobetci_adi_override || 'Bilinmiyor'}`;
-            }
-
-            // Açıklamaları ekle
-            if (buHaftaAciklama && buHaftaAciklama.aciklama) {
-                message += `\n\n📝 *Bu Hafta Açıklaması:*\n${buHaftaAciklama.aciklama}`;
-            }
-
-            if (gelecekHaftaAciklama && gelecekHaftaAciklama.aciklama) {
-                message += `\n\n📝 *Gelecek Hafta Açıklaması:*\n${gelecekHaftaAciklama.aciklama}`;
-            }
-
-            botInstance.sendMessage(chatId, message, { parse_mode: 'Markdown' });
-        } catch (error) {
-            console.error("/gelecek_hafta_nobetci hatası:", error);
-            botInstance.sendMessage(chatId, "❌ Bilgi alınırken bir hata oluştu.");
+        if (gelecekHaftaAciklama && gelecekHaftaAciklama.aciklama) {
+            message += `\n\n📝 Gelecek Hafta Açıklaması:\n${gelecekHaftaAciklama.aciklama}`;
         }
-    });
+
+        botInstance.sendMessage(chatId, message);
+    } catch (error) {
+        console.error("/gelecek_hafta_nobetci hatası:", error);
+        botInstance.sendMessage(chatId, "❌ Bilgi alınırken bir hata oluştu.");
+    }
+});
+
 
     // Callback query handler
     botInstance.on('callback_query', async (callbackQuery) => {
