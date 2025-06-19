@@ -48,13 +48,14 @@ Başlamak için /menu yazabilirsiniz.
     // MENU komutu
     botInstance.onText(/^\/menu$/, async (msg) => {
         const chatId = msg.chat.id;
-        const nobetci = await getAuthorizedNobetciByTelegramId(chatId);
         
-        if (!nobetci) {
-            return botInstance.sendMessage(chatId, "❌ Bu komutu kullanma yetkiniz yok. Lütfen önce sisteme kayıt olunuz.");
-        }
-
         try {
+            const nobetci = await getAuthorizedNobetciByTelegramId(chatId);
+            
+            if (!nobetci) {
+                return botInstance.sendMessage(chatId, "❌ Bu komutu kullanma yetkiniz yok. Lütfen önce sisteme kayıt olunuz.");
+            }
+
             // Güncel bilgileri al
             const guncelNobetci = await db.getNobetciById(nobetci.id);
             const aktifNobetci = await db.getAktifNobetci();
@@ -171,13 +172,47 @@ Merhaba *${guncelNobetci.name}*,
 
             krediDurumuMessage += `\n📊 *Genel Kredi Sıralaması:*\n`;
             
-            // İlk 5 nöbetçiyi göster
+            // Güncel kullanıcının kredi durumunu bul
+            const benimKredim = guncelNobetci.kredi || 0;
+            const gunlukKredi = 2396; // Bir günlük kredi miktarı
+            
+            // İlk 5 nöbetçiyi göster ve durumu hesapla
             tumNobetciler.slice(0, 5).forEach((n, index) => {
                 const emoji = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🔸';
-                krediDurumuMessage += `${emoji} ${n.name}: ${n.kredi || 0}\n`;
+                krediDurumuMessage += `${emoji} ${n.name}: ${n.kredi || 0}`;
+                
+                if (n.name === guncelNobetci.name) {
+                    krediDurumuMessage += ` ← *SİZ*`;
+                }
+                krediDurumuMessage += '\n';
             });
 
-            krediDurumuMessage += `\nℹ️ *Açıklama:*\n• Pozitif kredi = Fazla nöbet tutmuşsunuz\n• Negatif kredi = Nöbet borcunuz var\n• Kredi hesabı dakika bazlıdır`;
+            // Kullanıcının diğer nöbetçilerle karşılaştırmasını ekle
+            krediDurumuMessage += `\n📈 *Durumunuz:*\n`;
+            
+            // Kendinden önde ve geride olanları bul
+            const ondekilet = tumNobetciler.filter(n => (n.kredi || 0) > benimKredim);
+            const geridekilet = tumNobetciler.filter(n => (n.kredi || 0) < benimKredim);
+            
+            if (ondekilet.length > 0) {
+                const enOnde = ondekilet[ondekilet.length - 1]; // En yakın önde olan
+                const fark = (enOnde.kredi || 0) - benimKredim;
+                const gunFarki = (fark / gunlukKredi).toFixed(1);
+                krediDurumuMessage += `🔺 ${enOnde.name}'den ${gunFarki} gün geride\n`;
+            }
+            
+            if (geridekilet.length > 0) {
+                const enGerde = geridekilet[0]; // En yakın geride olan
+                const fark = benimKredim - (enGerde.kredi || 0);
+                const gunFarki = (fark / gunlukKredi).toFixed(1);
+                krediDurumuMessage += `🔻 ${enGerde.name}'den ${gunFarki} gün önde\n`;
+            }
+            
+            if (ondekilet.length === 0 && geridekilet.length === 0) {
+                krediDurumuMessage += `🎯 Herkes aynı seviyede\n`;
+            }
+
+            krediDurumuMessage += `\nℹ️ *Açıklama:*\n• Pozitif kredi = Fazla nöbet tutmuşsunuz\n• Negatif kredi = Nöbet borcunuz var\n• Kredi hesabı dakika bazlıdır\n• 1 gün = ${gunlukKredi} kredi`;
             
             botInstance.sendMessage(chatId, krediDurumuMessage, { parse_mode: 'Markdown' });
         } catch (error) {
@@ -300,7 +335,7 @@ Merhaba *${guncelNobetci.name}*,
         }
     });
 
-    // GELECEK HAFTA NÖBETÇİ komutu (mevcut kod)
+    // GELECEK HAFTA NÖBETÇİ komutu (düzeltilmiş)
     botInstance.onText(/^\/gelecek_hafta_nobetci$/, async (msg) => {
         const chatId = msg.chat.id;
         const nobetciYetkili = await getAuthorizedNobetciByTelegramId(chatId);
