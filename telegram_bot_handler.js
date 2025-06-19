@@ -367,6 +367,9 @@ Merhaba *${guncelNobetci.name}*,
 
             let message = `📅 *Haftalık Nöbetçi Bilgileri*
 
+📍 *Bu Hafta (${buHaftaNo}. hafta):*
+👨‍⚕️ *Nöbetçi:* ${buHaftaNobetci ? buHaftaNobetci.name : 'Belirlenemedi'}`;
+
             if (buHaftaAciklama && buHaftaAciklama.nobetci_id_override) {
                 message += `\n🔄 *Override:* ${buHaftaAciklama.nobetci_adi_override || 'Bilinmiyor'}`;
             }
