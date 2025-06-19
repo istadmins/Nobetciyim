@@ -1,4 +1,5 @@
 // utils/calendarUtils.js
+
 const db = require('../db');
 
 /**
@@ -45,18 +46,24 @@ async function getAsilHaftalikNobetci(date) {
     try {
         const yil = date.getFullYear();
         const hafta = getWeekOfYear(date);
+        
+        console.log(`[DEBUG] getAsilHaftalikNobetci çağrıldı: ${date.toISOString()}, Yıl: ${yil}, Hafta: ${hafta}`);
 
         // ÖNCELİK 1: Manuel atama (override) var mı diye kontrol et.
         if (typeof db.getDutyOverride === 'function') {
             const override = await db.getDutyOverride(yil, hafta);
             if (override && override.nobetci_id_override) {
-                console.log(`[Asil Nobetci] Manuel atama bulundu: Yıl ${yil}, Hafta ${hafta}. Nöbetçi ID: ${override.nobetci_id_override}`);
-                return await db.getNobetciById(override.nobetci_id_override);
+                console.log(`[DEBUG] Manuel atama bulundu: ID ${override.nobetci_id_override}`);
+                const nobetci = await db.getNobetciById(override.nobetci_id_override);
+                console.log(`[DEBUG] Manuel atanan nöbetçi:`, nobetci);
+                return nobetci;
             }
         }
 
         // ÖNCELİK 2: Manuel atama yoksa, otomatik rotasyonu hesapla.
         const nobetciler = await getAllNobetcilerFromDB();
+        console.log(`[DEBUG] Toplam nöbetçi sayısı: ${nobetciler.length}`);
+        
         if (!nobetciler || nobetciler.length === 0) {
             console.error("[Asil Nobetci] Sistemde kayıtlı nöbetçi bulunamadı.");
             return null;
@@ -65,7 +72,9 @@ async function getAsilHaftalikNobetci(date) {
         // Basit ve güvenilir rotasyon: (hafta numarası - 1) % nöbetçi sayısı
         const nobetciIndex = (hafta - 1) % nobetciler.length;
         const asilNobetci = nobetciler[nobetciIndex];
-        
+
+        console.log(`[DEBUG] Otomatik rotasyon: Index ${nobetciIndex}, Nöbetçi: ${asilNobetci?.name}`);
+
         if (!asilNobetci) {
             console.error(`[Asil Nobetci] Otomatik rotasyon hesaplama hatası: Index ${nobetciIndex} için nöbetçi bulunamadı.`);
             return null;
