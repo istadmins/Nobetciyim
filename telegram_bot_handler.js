@@ -46,25 +46,24 @@ Başlamak için /menu yazabilirsiniz.`;
         botInstance.sendMessage(chatId, welcomeMessage, { parse_mode: 'Markdown' });
     });
 
-    // MENU komutu
-    botInstance.onText(/^\/menu$/, async (msg) => {
-        const chatId = msg.chat.id;
+// MENU komutu (Markdown hatası düzeltildi)
+botInstance.onText(/^\/menu$/, async (msg) => {
+    const chatId = msg.chat.id;
+    
+    try {
+        const nobetci = await getAuthorizedNobetciByTelegramId(chatId);
         
-        try {
-            const nobetci = await getAuthorizedNobetciByTelegramId(chatId);
-            
-            if (!nobetci) {
-                return botInstance.sendMessage(chatId, "❌ Bu komutu kullanma yetkiniz yok. Lütfen önce sisteme kayıt olunuz.");
-            }
-            
-            // Güncel bilgileri al
-            const guncelNobetci = await db.getNobetciById(nobetci.id);
-            const aktifNobetci = await db.getAktifNobetci();
-            
-            // Bu haftanın nöbetçisini await ile al
-            const buHaftaNobetci = await getAsilHaftalikNobetci(new Date());
-            
-            const menuMessage = `🏥 *Nöbetçi Sistemi - Ana Menü*
+        if (!nobetci) {
+            return botInstance.sendMessage(chatId, "❌ Bu komutu kullanma yetkiniz yok. Lütfen önce sisteme kayıt olunuz.");
+        }
+        
+        // Güncel bilgileri al
+        const guncelNobetci = await db.getNobetciById(nobetci.id);
+        const aktifNobetci = await db.getAktifNobetci();
+        const buHaftaNobetci = await getAsilHaftalikNobetci(new Date());
+        
+        // Markdown formatını düzelt
+        const menuMessage = `🏥 *Nöbetçi Sistemi - Ana Menü*
 
 Merhaba *${guncelNobetci.name}*,
 
@@ -72,22 +71,24 @@ Merhaba *${guncelNobetci.name}*,
 📅 *Bu Haftanın Asıl Nöbetçisi:* ${buHaftaNobetci ? buHaftaNobetci.name : 'Belirlenemedi'}
 
 💰 *Kredi Durumunuz:*
-• *Mevcut Kredi:* ${guncelNobetci.kredi || 0}
-• *Ödenen Kredi:* ${guncelNobetci.pay_edilen_kredi || 0}
+• Mevcut Kredi: ${guncelNobetci.kredi || 0}
+• Ödenen Kredi: ${guncelNobetci.pay_edilen_kredi || 0}
 
 📋 *Kullanılabilir Komutlar:*
-• /aktif_nobetci - Aktif nöbetçi bilgisi
-• /nobet_al - Nöbet devralma talebi
-• /nobet_kredi_durum - Detaylı kredi durumu
-• /gelecek_hafta_nobetci - Gelecek hafta bilgisi
-• /sifre_sifirla - Şifre sıfırlama`;
-            
-            botInstance.sendMessage(chatId, menuMessage, { parse_mode: 'Markdown' });
-        } catch (error) {
-            console.error("/menu hatası:", error);
-            botInstance.sendMessage(chatId, "❌ Menü bilgileri alınırken hata oluştu. Lütfen tekrar deneyin.");
-        }
-    });
+• /aktif\\_nobetci - Aktif nöbetçi bilgisi
+• /nobet\\_al - Nöbet devralma talebi  
+• /nobet\\_kredi\\_durum - Detaylı kredi durumu
+• /gelecek\\_hafta\\_nobetci - Gelecek hafta bilgisi
+• /sifre\\_sifirla - Şifre sıfırlama`;
+        
+        botInstance.sendMessage(chatId, menuMessage, { parse_mode: 'Markdown' });
+    } catch (error) {
+        console.error("/menu hatası:", error);
+        botInstance.sendMessage(chatId, "❌ Menü bilgileri alınırken hata oluştu. Lütfen tekrar deneyin.");
+    }
+});
+
+
 
     // AKTİF NÖBETÇİ komutu
     botInstance.onText(/^\/aktif_nobetci$/, async (msg) => {
