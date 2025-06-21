@@ -46,7 +46,7 @@ Başlamak için /menu yazabilirsiniz.`;
         botInstance.sendMessage(chatId, welcomeMessage, { parse_mode: 'Markdown' });
     });
 
-// MENU komutu (kırmızı alanlar kaldırıldı)
+// MENU komutu (kredi bilgileri kaldırıldı)
 botInstance.onText(/^\/menu$/, async (msg) => {
     const chatId = msg.chat.id;
     
@@ -63,10 +63,6 @@ botInstance.onText(/^\/menu$/, async (msg) => {
         const menuMessage = `🏥 Nöbetçi Sistemi - Ana Menü
 
 Merhaba ${guncelNobetci.name},
-
-💰 Kredi Durumunuz:
-• Mevcut Kredi: ${guncelNobetci.kredi || 0}
-• Ödenen Kredi: ${guncelNobetci.pay_edilen_kredi || 0}
 
 📋 Kullanılabilir Komutlar:
 • /aktif_nobetci - Aktif nöbetçi bilgisi
@@ -98,7 +94,7 @@ Merhaba ${guncelNobetci.name},
                 return botInstance.sendMessage(chatId, "ℹ️ Şu anda aktif nöbetçi bulunmuyor.");
             }
 
-            const message = `👨‍⚕️ *Aktif Nöbetçi:* ${aktifNobetci.name}\n💳 *Kredi:* ${aktifNobetci.kredi || 0}`;
+            const message = `👨‍⚕️ *Aktif Nöbetçi:* ${aktifNobetci.name}`;
             botInstance.sendMessage(chatId, message, { parse_mode: 'Markdown' });
         } catch (error) {
             console.error("/aktif_nobetci hatası:", error);
@@ -137,8 +133,6 @@ Merhaba ${guncelNobetci.name},
             let krediDurumuMessage = `💳 *Detaylı Kredi Durumu*
 
 👤 *Nöbetçi:* ${guncelNobetci.name}
-💰 *Mevcut Kredi:* ${guncelNobetci.kredi || 0}
-📊 *Ödenen Kredi:* ${guncelNobetci.pay_edilen_kredi || 0}
 📞 *Telefon:* ${guncelNobetci.telefon_no || 'Kayıtlı değil'}
 
 📋 *Kredi Kuralları:*
@@ -333,7 +327,7 @@ Merhaba ${guncelNobetci.name},
     });
 
 
-// GELECEK HAFTA NÖBETÇİ komutu (override bilgisi kaldırıldı)
+// GELECEK HAFTA NÖBETÇİ komutu (haftalık nöbetçi bilgileri kaldırıldı)
 botInstance.onText(/^\/gelecek_hafta_nobetci$/, async (msg) => {
     const chatId = msg.chat.id;
     const nobetciYetkili = await getAuthorizedNobetciByTelegramId(chatId);
@@ -360,13 +354,7 @@ botInstance.onText(/^\/gelecek_hafta_nobetci$/, async (msg) => {
         const gelecekHaftaNo = getWeekOfYear(nextWeekDate);
         const gelecekHaftaAciklama = await db.getDutyOverride(gelecekHaftaYil, gelecekHaftaNo);
 
-        let message = `📅 Haftalık Nöbetçi Bilgileri
-
-📍 Bu Hafta (${buHaftaNo}. hafta):
-👨‍⚕️ Nöbetçi: ${buHaftaNobetci ? buHaftaNobetci.name : 'Belirlenemedi'}
-
-📍 Gelecek Hafta (${gelecekHaftaNo}. hafta):
-👨‍⚕️ Nöbetçi: ${gelecekHaftaNobetci ? gelecekHaftaNobetci.name : 'Belirlenemedi'}`;
+        let message = `📅 Haftalık Nöbetçi Bilgileri`;
 
         // Açıklamaları ekle
         if (buHaftaAciklama && buHaftaAciklama.aciklama) {
