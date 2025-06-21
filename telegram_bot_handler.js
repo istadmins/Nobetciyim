@@ -200,7 +200,7 @@ Merhaba ${guncelNobetci.name},
                 krediDurumuMessage += `🎯 Herkes aynı seviyede\n`;
             }
 
-            krediDurumuMessage += `\nℹ️ *Açıklama:*\n• Pozitif kredi = Fazla nöbet tutmuşsunuz\n• Negatif kredi = Nöbet borcunuz var\n• Kredi hesabı dakika bazlıdır\n• 1 gün = ${gunlukKredi} kredi`;
+            krediDurumuMessage += `\nℹ️ *Açıklama:*\n• Kredi hesabı dakika bazlıdır\n• 1 gün = ${gunlukKredi} kredi`;
 
             botInstance.sendMessage(chatId, krediDurumuMessage, { parse_mode: 'Markdown' });
         } catch (error) {
