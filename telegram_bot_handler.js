@@ -327,7 +327,7 @@ Merhaba ${guncelNobetci.name},
     });
 
 
-// GELECEK HAFTA NÖBETÇİ komutu (haftalık nöbetçi bilgileri kaldırıldı)
+// GELECEK HAFTA NÖBETÇİ komutu (sadece bu hafta nöbetçi bilgisi kaldırıldı)
 botInstance.onText(/^\/gelecek_hafta_nobetci$/, async (msg) => {
     const chatId = msg.chat.id;
     const nobetciYetkili = await getAuthorizedNobetciByTelegramId(chatId);
@@ -354,7 +354,10 @@ botInstance.onText(/^\/gelecek_hafta_nobetci$/, async (msg) => {
         const gelecekHaftaNo = getWeekOfYear(nextWeekDate);
         const gelecekHaftaAciklama = await db.getDutyOverride(gelecekHaftaYil, gelecekHaftaNo);
 
-        let message = `📅 Haftalık Nöbetçi Bilgileri`;
+        let message = `📅 Haftalık Nöbetçi Bilgileri
+
+📍 Gelecek Hafta (${gelecekHaftaNo}. hafta):
+👨‍⚕️ Nöbetçi: ${gelecekHaftaNobetci ? gelecekHaftaNobetci.name : 'Belirlenemedi'}`;
 
         // Açıklamaları ekle
         if (buHaftaAciklama && buHaftaAciklama.aciklama) {
