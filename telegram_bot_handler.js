@@ -11,6 +11,39 @@ const INTERNAL_API_TOKEN = process.env.INTERNAL_API_TOKEN;
 let botInstance = null;
 const pendingTransferRequests = {}; // Onay bekleyen devir istekleri için
 
+// telegram_bot_handler.js dosyasının başına ekleyin:
+const logger = {
+    info: (msg) => console.log(`[INFO] ${new Date().toISOString()} | ${msg}`),
+    error: (msg, err) => console.error(`[ERROR] ${new Date().toISOString()} | ${msg}`, err || ''),
+    warn: (msg) => console.warn(`[WARN] ${new Date().toISOString()} | ${msg}`)
+};
+
+// Sonra bildirim fonksiyonunda:
+async function notifyAllOfDutyChange(newActiveGuardName, triggeredBy = "API") {
+    logger.info(`Nöbet değişikliği bildirimi başlatıldı: ${newActiveGuardName} (${triggeredBy})`);
+    
+    try {
+        const allNobetcilerWithTelegram = await db.getAllNobetcilerWithTelegramId();
+        logger.info(`Toplam ${allNobetcilerWithTelegram.length} nöbetçiye bildirim gönderiliyor`);
+        
+        const message = `🔄 *Nöbet Değişikliği*\n\n👨‍⚕️ Yeni aktif nöbetçi: *${newActiveGuardName}*\n📍 Tetikleyen: ${triggeredBy}`;
+
+        for (const nobetci of allNobetcilerWithTelegram) {
+            if (nobetci.telegram_id && botInstance) {
+                try {
+                    await botInstance.sendMessage(nobetci.telegram_id, message, { parse_mode: 'Markdown' });
+                } catch (err) {
+                    console.error(`Telegram bildirim hatası (${nobetci.name}):`, err.message);
+                }
+            }
+        }
+        
+    } catch (error) {
+        logger.error("notifyAllOfDutyChange hatası:", error);
+    }
+}
+
+
 function initBot() {
     if (!botToken) {
         console.error("HATA: TELEGRAM_BOT_TOKEN ayarlanmamış.");
@@ -427,23 +460,6 @@ botInstance.onText(/^\/gelecek_hafta_nobetci$/, async (msg) => {
     return botInstance;
 }
 
-async function notifyAllOfDutyChange(newActiveGuardName, triggeredBy = "API") {
-    try {
-        const allNobetcilerWithTelegram = await db.getAllNobetcilerWithTelegramId();
-        const message = `🔄 *Nöbet Değişikliği*\n\n👨‍⚕️ Yeni aktif nöbetçi: *${newActiveGuardName}*\n📍 Tetikleyen: ${triggeredBy}`;
 
-        for (const nobetci of allNobetcilerWithTelegram) {
-            if (nobetci.telegram_id && botInstance) {
-                try {
-                    await botInstance.sendMessage(nobetci.telegram_id, message, { parse_mode: 'Markdown' });
-                } catch (err) {
-                    console.error(`Telegram bildirim hatası (${nobetci.name}):`, err.message);
-                }
-            }
-        }
-    } catch (error) {
-        console.error("notifyAllOfDutyChange hatası:", error);
-    }
-}
 
 module.exports = { init: initBot, notifyAllOfDutyChange };
