@@ -11,6 +11,77 @@ const logger = {
   warn: (msg, ...args) => console.warn(`[WARN] ${msg}`, ...args)
 };
 
+// YENİ: KREDİ PAY DAĞITIM ENDPOINT'İ
+// Bu endpoint, tüm nöbetçilerin 'kazanılan' kredilerini (mevcut 'kredi' sütunu) 'pay edilen' kredilerine ekler
+// ve 'kazanılan' kredilerini sıfırlar. Arayüzdeki "Başlat" butonunun backend mantığı budur.
+router.post('/pay-dagit', (req, res) => {
+    logger.info("Kredi pay dağıtım işlemi API üzerinden başlatıldı.");
+
+    // db.serialize, komutların veritabanında sırayla ve güvenli bir şekilde çalışmasını sağlar.
+    db.serialize(() => {
+        // Güvenli bir operasyon için TRANSACTION başlatıyoruz.
+        // Bu sayede ya tüm güncellemeler başarılı olur ya da bir hata olursa hiçbiri uygulanmaz.
+        db.run("BEGIN TRANSACTION", (err) => {
+            if (err) {
+                logger.error("Pay dağıtımı - BEGIN TRANSACTION hatası:", err.message);
+                return res.status(500).json({ success: false, error: "Veritabanı işlemi başlatılamadı." });
+            }
+        });
+
+        // Önce tüm nöbetçilerin mevcut kredi bilgilerini alıyoruz.
+        db.all("SELECT id, kredi, pay_edilen_kredi FROM Nobetciler", [], (err, rows) => {
+            if (err) {
+                logger.error("Pay dağıtımı - Nöbetçiler alınamadı:", err.message);
+                db.run("ROLLBACK"); // Hata durumunda işlemi geri al.
+                return res.status(500).json({ success: false, error: "Nöbetçi bilgileri alınamadı." });
+            }
+
+            // Her bir nöbetçi için güncelleme sorgusunu hazırlayıp çalıştırıyoruz.
+            const updatePromises = rows.map(nobetci => {
+                return new Promise((resolve, reject) => {
+                    const kazanilanKredi = nobetci.kredi || 0;
+                    const payEdilenKredi = nobetci.pay_edilen_kredi || 0;
+                    const yeniPayEdilenKredi = payEdilenKredi + kazanilanKredi;
+
+                    db.run(
+                        "UPDATE Nobetciler SET kredi = 0, pay_edilen_kredi = ? WHERE id = ?",
+                        [yeniPayEdilenKredi, nobetci.id],
+                        function(updateErr) {
+                            if (updateErr) {
+                                reject(updateErr);
+                            } else {
+                                resolve(this.changes);
+                            }
+                        }
+                    );
+                });
+            });
+
+            // Tüm güncelleme işlemlerinin tamamlanmasını bekliyoruz.
+            Promise.all(updatePromises)
+                .then(() => {
+                    // Tüm güncellemeler başarılı olursa, işlemi kalıcı hale getiriyoruz (COMMIT).
+                    db.run("COMMIT", (commitErr) => {
+                        if (commitErr) {
+                            logger.error("Pay dağıtımı - COMMIT hatası:", commitErr.message);
+                            db.run("ROLLBACK"); // Commit başarısız olursa da geri almayı dene.
+                            return res.status(500).json({ success: false, error: "Değişiklikler kaydedilemedi." });
+                        }
+                        logger.info("Kredi pay dağıtımı başarıyla tamamlandı.");
+                        res.json({ success: true, message: "Kredi dağıtımı başarıyla tamamlandı ve kazanılan krediler sıfırlandı." });
+                    });
+                })
+                .catch(promiseErr => {
+                    // Güncellemelerden herhangi biri başarısız olursa, tüm işlemi geri alıyoruz (ROLLBACK).
+                    logger.error("Pay dağıtımı - Güncelleme hatası, ROLLBACK yapılıyor:", promiseErr.message);
+                    db.run("ROLLBACK");
+                    res.status(500).json({ success: false, error: "Krediler güncellenirken bir hata oluştu. İşlem geri alındı." });
+                });
+        });
+    });
+});
+
+
 // --- AKTİF NÖBETÇİ DEĞİŞTİRME ---
 router.post('/:id/set-aktif', async (req, res) => {
     const nobetciIdToSet = parseInt(req.params.id, 10);
@@ -32,16 +103,14 @@ router.post('/:id/set-aktif', async (req, res) => {
     }
 });
 
-// --- YENİ: ŞİFRE SIFIRLAMA ENDPOINT'İ ---
+// --- ŞİFRE SIFIRLAMA ENDPOINT'İ ---
 router.post('/reset-password/:id', async (req, res) => {
     const nobetciId = parseInt(req.params.id, 10);
     if (isNaN(nobetciId)) {
         return res.status(400).json({ success: false, error: "Geçersiz nöbetçi ID" });
     }
     try {
-        const newPassword = crypto.randomBytes(4).toString('hex'); // 8 karakterli yeni şifre
-        // NOT: Güvenli bir sistemde şifreler veritabanına doğrudan yazılmaz, hash'lenir.
-        // Mevcut yapınızda hash'leme yoksa bu şekilde devam edilebilir.
+        const newPassword = crypto.randomBytes(4).toString('hex');
         db.run('UPDATE Nobetciler SET password = ? WHERE id = ?', [newPassword, nobetciId], function(err) {
             if (err) {
                 logger.error(`Şifre sıfırlama DB hatası (ID: ${nobetciId}):`, err.message);
