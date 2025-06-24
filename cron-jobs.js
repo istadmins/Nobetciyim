@@ -2,12 +2,10 @@
 const cron = require('node-cron');
 const db = require('./db');
 const { getAsilHaftalikNobetci } = require('./utils/calendarUtils');
-// DÜZELTME: Hatalı fonksiyon import'u kaldırıldı, doğrusu eklendi.
 const { notifyAllOfDutyChange } = require('./telegram_bot_handler');
 
 // Loglama için yardımcı fonksiyonlar
 function logCreditUpdate(message, ...optionalParams) {
-    // Bu loglama, üretim ortamı dışında kredi güncellemelerini gösterir.
     if (process.env.NODE_ENV !== 'production') {
         const timestamp = new Date().toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' });
         console.log(`[KREDİ ${timestamp}] ${message}`, ...optionalParams);
@@ -20,8 +18,7 @@ const logger = {
   warn: (msg) => console.warn(`[WARN] ${new Date().toISOString()} | ${msg}`)
 };
 
-
-// Orijinal dosyanızdaki yardımcı kredi fonksiyonları
+// Yardımcı kredi fonksiyonları
 function anlikHaftaSonuKredisi(tarih, tumKurallar) {
     const haftaSonuKurali = tumKurallar.find(k => k.kural_adi === 'Hafta Sonu');
     if (!haftaSonuKurali || typeof haftaSonuKurali.kredi === 'undefined') return 0;
@@ -58,7 +55,7 @@ function isTimeInInterval(dateObj, startTimeStr, endTimeStr) {
     }
 }
 
-// DAKİKALIK KREDİ GÜNCELLEME (Orijinal haliyle geri eklendi)
+// DAKİKALIK KREDİ GÜNCELLEME
 cron.schedule('* * * * *', async () => {
     const now = new Date();
     try {
@@ -97,30 +94,28 @@ cron.schedule('* * * * *', async () => {
 cron.schedule('0 9 * * 1', async () => {
     logger.info('[Pzt 09:00 Cron] Haftalık nöbetçi atama görevi başlatıldı.');
     try {
-        // DÜZELTME: Mevcut tarih yerine, bir sonraki haftanın tarihini hesapla.
-        const nextWeekDate = new Date();
-        nextWeekDate.setDate(nextWeekDate.getDate() + 7);
+        // DÜZELTME: Artık gelecek haftayı değil, mevcut (yeni başlayan) haftayı sorguluyoruz.
+        const anlikTarih = new Date();
+        logger.info(`[Pzt 09:00 Cron] Yeni hafta için nöbetçi aranıyor (Hedef Tarih: ${anlikTarih.toISOString()})`);
         
-        logger.info(`[Pzt 09:00 Cron] Gelecek hafta için nöbetçi aranıyor (Hedef Tarih: ${nextWeekDate.toISOString()})`);
-        
-        const gelecekHaftaNobetci = await getAsilHaftalikNobetci(nextWeekDate);
+        // Sorgulamayı o anki tarihle yapıyoruz.
+        const haftaninNobetci = await getAsilHaftalikNobetci(anlikTarih);
 
-        if (gelecekHaftaNobetci && gelecekHaftaNobetci.id) {
-            await db.setAktifNobetci(gelecekHaftaNobetci.id);
-            logger.info(`[Pzt 09:00 Cron] Haftanın nöbetçisi başarıyla "${gelecekHaftaNobetci.name}" olarak ayarlandı.`);
+        if (haftaninNobetci && haftaninNobetci.id) {
+            await db.setAktifNobetci(haftaninNobetci.id);
+            logger.info(`[Pzt 09:00 Cron] Haftanın nöbetçisi başarıyla "${haftaninNobetci.name}" olarak ayarlandı.`);
             
-            // DÜZELTME: Doğru bildirim fonksiyonu çağrılıyor.
-            await notifyAllOfDutyChange(gelecekHaftaNobetci.name, 'Haftalık Otomatik Değişim');
+            await notifyAllOfDutyChange(haftaninNobetci.name, 'Haftalık Otomatik Değişim');
 
         } else {
-            logger.warn("[Pzt 09:00 Cron] Gelecek hafta için asıl nöbetçi bulunamadı. Atama yapılamadı.");
+            logger.warn("[Pzt 09:00 Cron] Bu hafta için asıl nöbetçi bulunamadı. Atama yapılamadı.");
         }
     } catch (error) {
         logger.error("[Pzt 09:00 Cron] Görev sırasında kritik bir hata oluştu:", error);
     }
 }, { timezone: "Europe/Istanbul" });
 
-// AKŞAM VARDİYA DEĞİŞİMİ (Düzeltilmiş bildirim ile)
+// AKŞAM VARDİYA DEĞİŞİMİ
 async function setupEveningShiftCronJob() {
     try {
         const shiftTimeRanges = await db.getShiftTimeRanges();
@@ -145,7 +140,6 @@ async function setupEveningShiftCronJob() {
                             await db.setAktifNobetci(hedefNobetci.id);
                             logger.info(`[Akşam Vardiya] Nöbetçi ayarlandı: ${hedefNobetci.name}.`);
                             
-                            // DÜZELTME: Doğru bildirim fonksiyonu çağrılıyor.
                             await notifyAllOfDutyChange(hedefNobetci.name, 'Akşam Vardiya Değişimi');
                         }
                     }
