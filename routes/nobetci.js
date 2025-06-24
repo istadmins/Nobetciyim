@@ -11,11 +11,12 @@ const logger = {
   warn: (msg, ...args) => console.warn(`[WARN] ${msg}`, ...args)
 };
 
-// YENİ: KREDİ PAY DAĞITIM ENDPOINT'İ
-// Bu endpoint, tüm nöbetçilerin 'kazanılan' kredilerini (mevcut 'kredi' sütunu) 'pay edilen' kredilerine ekler
-// ve 'kazanılan' kredilerini sıfırlar. Arayüzdeki "Başlat" butonunun backend mantığı budur.
-router.post('/pay-dagit', (req, res) => {
-    logger.info("Kredi pay dağıtım işlemi API üzerinden başlatıldı.");
+// DÜZELTME: KREDİ PAY DAĞITIM ENDPOINT'İ
+// Frontend'in (arayüz) çağırdığı URL ve metod ile uyumlu hale getirildi.
+// Metod: POST -> PUT
+// URL: /pay-dagit -> /guncelleKazanilanKrediler
+router.put('/guncelleKazanilanKrediler', (req, res) => {
+    logger.info("Kredi pay dağıtım işlemi API üzerinden başlatıldı (guncelleKazanilanKrediler).");
 
     // db.serialize, komutların veritabanında sırayla ve güvenli bir şekilde çalışmasını sağlar.
     db.serialize(() => {
