@@ -1,11 +1,9 @@
-// node2/routes/nobetci.js
-
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const bcrypt = require('bcryptjs');
 const axios = require('axios');
-const nodemailer = require('nodemailer'); // E-posta göndermek için eklendi
+const nodemailer = require('nodemailer');
 
 // --- Telegram Bildirim Fonksiyonu ---
 async function sendTelegramNotificationForActiveGuardChange(newActiveGuardName) {
@@ -39,6 +37,79 @@ function generateRandomPassword(length = 8) {
 }
 
 // --- ROTALAR ---
+
+// Şifre Sıfırlama - DOĞRU VERİTABANI TABLOSU ('Users') İLE GÜNCELLENDİ
+router.post('/reset-password/:id', (req, res) => {
+    const userId = req.params.id;
+
+    // 1. Adım: Kullanıcının adını DOĞRU tablodan ('Users') ve DOĞRU sütundan ('username') al.
+    db.get('SELECT username FROM Users WHERE id = ?', [userId], (err, user) => {
+        if (err) {
+            console.error(`Şifre sıfırlama için kullanıcı bilgisi alınırken DB hatası (ID: ${userId}):`, err.message);
+            return res.status(500).json({ error: "Kullanıcı bilgisi alınırken bir hata oluştu." });
+        }
+        if (!user) {
+            return res.status(404).json({ error: 'Giriş kullanıcısı bulunamadı' });
+        }
+
+        const newPassword = generateRandomPassword(8);
+        const hashedPassword = bcrypt.hashSync(newPassword, 10);
+
+        // 2. Adım: Şifreyi DOĞRU tabloda ('Users') güncelle.
+        db.run('UPDATE Users SET password = ? WHERE id = ?', [hashedPassword, userId], async function(err) {
+            if (err) {
+                console.error(`Şifre sıfırlanırken DB hatası (ID: ${userId}):`, err.message);
+                return res.status(500).json({ error: "Şifre sıfırlanırken bir sunucu hatası oluştu." });
+            }
+            if (this.changes === 0) return res.status(404).json({ error: 'Giriş kullanıcısı bulunamadı (güncelleme sırasında).' });
+
+            // 3. Adım: E-posta gönderimini ayarla ve gönder.
+            try {
+                const transporter = nodemailer.createTransport({
+                    host: process.env.SES_SMTP_HOST,
+                    port: parseInt(process.env.SES_SMTP_PORT || "587"),
+                    secure: (process.env.SES_SMTP_PORT === '465'),
+                    auth: {
+                        user: process.env.SES_SMTP_USER,
+                        pass: process.env.SES_SMTP_PASSWORD,
+                    },
+                });
+
+                const mailOptions = {
+                    from: process.env.EMAIL_FROM_SES_SMTP,
+                    to: process.env.EMAIL_FROM_SES_SMTP,
+                    subject: 'Şifre Sıfırlama Bilgilendirmesi',
+                    html: `
+                        Merhaba,
+                        <br><br>
+                        <b>${user.username}</b> adlı kullanıcının şifresi başarıyla sıfırlanmıştır.
+                        <br><br>
+                        Yeni şifresi: <b>${newPassword}</b>
+                        <br><br>
+                        Lütfen bu şifreyi ilgili kullanıcıya iletin.
+                        <br><br>
+                        <i>Bu, otomatik bir bilgilendirme mesajıdır.</i>
+                    `
+                };
+
+                await transporter.sendMail(mailOptions);
+                console.log(`Kullanıcı ${user.username} (ID: ${userId}) için şifre sıfırlandı ve e-posta bildirimi gönderildi.`);
+                res.json({ message: 'Şifre başarıyla sıfırlandı ve yöneticiye e-posta ile bildirildi.' });
+
+            } catch (emailError) {
+                console.error("Şifre sıfırlama e-postası gönderilirken hata oluştu:", emailError);
+                res.status(500).json({ 
+                    message: 'Şifre sıfırlandı ancak bildirim e-postası gönderilemedi. Lütfen sunucu loglarını kontrol edin.',
+                    newPassword: newPassword
+                });
+            }
+        });
+    });
+});
+
+
+// === DİĞER TÜM NÖBETÇİ İŞLEMLERİ ('Nobetciler' TABLOSUNU KULLANAN) ===
+// Bu rotalara dokunulmadı ve orijinal halleriyle korundu.
 
 // Yeni nöbetçi ekle
 router.post('/', (req, res) => {
@@ -81,77 +152,6 @@ router.delete('/:id', (req, res) => {
         res.json({ message: 'Nöbetçi başarıyla silindi' });
     });
 });
-
-// Şifre Sıfırlama - E-POSTA GÖNDERİMİ İLE GÜNCELLENDİ
-router.post('/reset-password/:id', (req, res) => {
-    const userId = req.params.id;
-
-    // 1. Adım: Şifresi sıfırlanacak kullanıcının adını veritabanından alalım.
-    db.get('SELECT name FROM Nobetciler WHERE id = ?', [userId], (err, user) => {
-        if (err) {
-            console.error(`Şifre sıfırlama için kullanıcı bilgisi alınırken DB hatası (ID: ${userId}):`, err.message);
-            return res.status(500).json({ error: "Kullanıcı bilgisi alınırken bir hata oluştu." });
-        }
-        if (!user) {
-            return res.status(404).json({ error: 'Nöbetçi bulunamadı' });
-        }
-
-        const newPassword = generateRandomPassword(8);
-        const hashedPassword = bcrypt.hashSync(newPassword, 10);
-
-        // 2. Adım: Şifreyi veritabanında güncelle.
-        db.run('UPDATE Nobetciler SET password = ? WHERE id = ?', [hashedPassword, userId], async function(err) {
-            if (err) {
-                console.error(`Şifre sıfırlanırken DB hatası (ID: ${userId}):`, err.message);
-                return res.status(500).json({ error: "Şifre sıfırlanırken bir sunucu hatası oluştu." });
-            }
-            if (this.changes === 0) return res.status(404).json({ error: 'Nöbetçi bulunamadı (güncelleme sırasında).' });
-
-            // 3. Adım: E-posta gönderimini ayarla ve gönder.
-            try {
-                const transporter = nodemailer.createTransport({
-                    host: process.env.SES_SMTP_HOST,
-                    port: parseInt(process.env.SES_SMTP_PORT || "587"),
-                    secure: (process.env.SES_SMTP_PORT === '465'), // port 465 ise true, değilse false
-                    auth: {
-                        user: process.env.SES_SMTP_USER,
-                        pass: process.env.SES_SMTP_PASSWORD,
-                    },
-                });
-
-                const mailOptions = {
-                    from: process.env.EMAIL_FROM_SES_SMTP,
-                    to: process.env.EMAIL_FROM_SES_SMTP, // Şifre bilgisi yönetici e-postasına gider
-                    subject: 'Nöbetçim - Şifre Sıfırlama Bilgilendirmesi',
-                    html: `
-                        Merhaba,
-                        <br><br>
-                        <b>${user.name}</b> adlı kullanıcının şifresi başarıyla sıfırlanmıştır.
-                        <br><br>
-                        Yeni şifresi: <b>${newPassword}</b>
-                        <br><br>
-                        Lütfen bu şifreyi ilgili kullanıcıya iletin.
-                        <br><br>
-                        <i>Bu, otomatik bir bilgilendirme mesajıdır.</i>
-                    `
-                };
-
-                await transporter.sendMail(mailOptions);
-                console.log(`Kullanıcı ${user.name} (ID: ${userId}) için şifre sıfırlandı ve e-posta bildirimi gönderildi.`);
-                res.json({ message: 'Şifre başarıyla sıfırlandı ve yöneticiye e-posta ile bildirildi.' });
-
-            } catch (emailError) {
-                console.error("Şifre sıfırlama e-postası gönderilirken hata oluştu:", emailError);
-                // Şifre değişti ama e-posta gitmedi, bu durumu kullanıcıya bildir.
-                res.status(500).json({ 
-                    message: 'Şifre başarıyla sıfırlandı ancak bildirim e-postası gönderilemedi. Lütfen sunucu loglarını kontrol edin.',
-                    newPassword: newPassword // Hata durumunda şifreyi kaybetmemek için yine de dönebiliriz.
-                });
-            }
-        });
-    });
-});
-
 
 // Tüm nöbetçileri döndür
 router.get('/', (req, res) => {
@@ -254,7 +254,9 @@ router.put('/kredileri-guncelle', (req, res) => {
     }
     db.serialize(() => {
         const stmt = db.prepare("UPDATE Nobetciler SET kredi = ? WHERE id = ?");
-        // ... (kalan kod aynı)
+        nobetciKredileri.forEach(nobetci => {
+            stmt.run(nobetci.kredi, nobetci.id);
+        });
         stmt.finalize();
         res.json({ message: `Krediler güncellendi.` });
     });
@@ -267,7 +269,9 @@ router.put('/pay-edilen-kredileri-guncelle', (req, res) => {
     }
     db.serialize(() => {
         const stmt = db.prepare("UPDATE Nobetciler SET pay_edilen_kredi = ? WHERE id = ?");
-        // ... (kalan kod aynı)
+        nobetciPayEdilenKredileri.forEach(nobetci => {
+            stmt.run(nobetci.pay_edilen_kredi, nobetci.id);
+        });
         stmt.finalize();
         res.json({ message: `Pay edilen krediler güncellendi.` });
     });
