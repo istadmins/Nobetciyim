@@ -5,7 +5,7 @@ const db = require('../db');
 const { notifyAllOfDutyChange } = require('../telegram_bot_handler');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer'); // E-posta için gerekli
-const bcrypt = require('bcrypt'); // Şifreleme için gerekli
+const bcrypt = require('bcryptjs'); // Şifreleme için gerekli
 
 const logger = {
     info: (msg, ...args) => console.log(`[INFO] ${msg}`, ...args),
