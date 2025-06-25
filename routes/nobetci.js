@@ -16,67 +16,78 @@ function generateRandomPassword(length = 8) {
     return password;
 }
 
-// Şifre Sıfırlama - SADECE 'admin' KULLANICISI İÇİN ÇALIŞACAK ŞEKİLDE GÜNCELLENDİ
+// Şifre Sıfırlama - DETAYLI LOGLAMA İLE GÜNCELLENDİ
 router.post('/reset-admin-password', (req, res) => {
     const adminUsername = 'admin';
 
-    // 1. Adım: Kullanıcıyı ID yerine doğrudan 'admin' kullanıcı adıyla bul. (Sizin öneriniz üzerine düzeltildi)
     db.get('SELECT id, username FROM Users WHERE username = ?', [adminUsername], (err, user) => {
         if (err) {
-            console.error(`Admin kullanıcısı aranırken DB hatası:`, err.message);
+            console.error(`[HATA] Admin kullanıcısı aranırken DB hatası:`, err.message);
             return res.status(500).json({ error: "Veritabanı hatası oluştu." });
         }
         if (!user) {
-            // Bu hatanın artık gelmemesi lazım, çünkü sunucudaki DB boş bile olsa sorgu başarısız olmaz, sadece sonuç dönmez.
-            return res.status(404).json({ error: `'${adminUsername}' kullanıcısı veritabanında bulunamadı. Lütfen kontrol edin.` });
+            console.error(`[HATA] '${adminUsername}' kullanıcısı veritabanında bulunamadı.`);
+            return res.status(404).json({ error: `'${adminUsername}' kullanıcısı veritabanında bulunamadı.` });
         }
 
         const newPassword = generateRandomPassword(8);
         const hashedPassword = bcrypt.hashSync(newPassword, 10);
 
-        // 2. Adım: Şifreyi 'admin' kullanıcısı için güncelle.
         db.run('UPDATE Users SET password = ? WHERE username = ?', [hashedPassword, adminUsername], async function(err) {
             if (err) {
-                console.error(`Admin şifresi güncellenirken DB hatası:`, err.message);
+                console.error(`[HATA] Admin şifresi güncellenirken DB hatası:`, err.message);
                 return res.status(500).json({ error: "Şifre güncellenirken bir sunucu hatası oluştu." });
             }
 
+            // E-posta gönderme işlemi
             try {
-                const transporter = nodemailer.createTransport({
+                const mailConfig = {
                     host: process.env.SES_SMTP_HOST,
                     port: parseInt(process.env.SES_SMTP_PORT || "587"),
-                    auth: { user: process.env.SES_SMTP_USER, pass: process.env.SES_SMTP_PASSWORD },
-                });
+                    secure: (process.env.SES_SMTP_PORT === '465'), // Port 465 ise true
+                    auth: {
+                        user: process.env.SES_SMTP_USER,
+                        pass: process.env.SES_SMTP_PASSWORD,
+                    },
+                };
+                
+                // YENİ EKLENDİ: Hangi ayarlarla bağlanıldığını logla
+                console.log(`[LOG] E-posta sunucusuna bağlanılıyor... Ayarlar: Host=${mailConfig.host}, Port=${mailConfig.port}, User=${mailConfig.auth.user}`);
+
+                const transporter = nodemailer.createTransport(mailConfig);
+                
+                // YENİ EKLENDİ: Bağlantıyı doğrula
+                await transporter.verify();
+                console.log('[LOG] SMTP sunucu bağlantısı başarılı.');
 
                 const mailOptions = {
-                    from: process.env.EMAIL_FROM_SES_SMTP,
+                    from: `"Nöbetçi Sistemi" <${process.env.EMAIL_FROM_SES_SMTP}>`,
                     to: process.env.EMAIL_FROM_SES_SMTP,
                     subject: 'Admin Şifre Sıfırlama Bilgilendirmesi',
                     html: `Merhaba,<br><br><b>${user.username}</b> adlı kullanıcının şifresi başarıyla sıfırlanmıştır.<br><br>Yeni şifresi: <b>${newPassword}</b>`
                 };
 
-                await transporter.sendMail(mailOptions);
-                console.log(`Kullanıcı ${user.username} için şifre sıfırlandı ve e-posta bildirimi gönderildi.`);
+                // YENİ EKLENDİ: Gönderilecek e-posta detaylarını logla
+                console.log(`[LOG] E-posta gönderiliyor... Kime: ${mailOptions.to}, Kimden: ${mailOptions.from}, Konu: ${mailOptions.subject}`);
+                
+                const info = await transporter.sendMail(mailOptions);
+                
+                // YENİ EKLENDİ: SMTP sunucusundan gelen başarılı yanıtı logla
+                console.log(`[BAŞARILI] E-posta gönderildi. Sunucu yanıtı: ${info.response}`);
                 res.json({ message: 'Admin şifresi sıfırlandı ve yöneticiye e-posta ile bildirildi.' });
+
             } catch (emailError) {
-                console.error("Şifre sıfırlama e-postası gönderilirken hata oluştu:", emailError);
-                res.status(500).json({ message: 'Şifre sıfırlandı ancak bildirim e-postası gönderilemedi.' });
+                // YENİ EKLENDİ: Hata durumunda detaylı loglama
+                console.error("[HATA] E-posta gönderilirken kritik bir hata oluştu:", emailError);
+                res.status(500).json({ message: 'Şifre sıfırlandı ancak bildirim e-postası gönderilemedi. Sunucu loglarını kontrol edin.' });
             }
         });
     });
 });
 
 // === DİĞER TÜM NÖBETÇİ İŞLEMLERİ OLDUĞU GİBİ BIRAKILDI ===
-// ...
 // (Bu kısım, bir önceki yanıttaki 'Nobetciler' tablosuyla çalışan tam kodun aynısıdır)
 // ...
-
-module.exports = router;
-
-// === DİĞER TÜM NÖBETÇİ İŞLEMLERİ ('Nobetciler' TABLOSUNU KULLANAN) ===
-// Bu rotalara dokunulmadı ve orijinal halleriyle korundu.
-
-// Yeni nöbetçi ekle
 router.post('/', (req, res) => {
     const { name, password, telegram_id, telefon_no } = req.body;
     const initialKredi = 0;
@@ -104,8 +115,6 @@ router.post('/', (req, res) => {
             });
         });
 });
-
-// Nöbetçi Sil
 router.delete('/:id', (req, res) => {
     db.run('DELETE FROM Nobetciler WHERE id = ?', [req.params.id], function(err) {
         if (err) {
@@ -117,8 +126,6 @@ router.delete('/:id', (req, res) => {
         res.json({ message: 'Nöbetçi başarıyla silindi' });
     });
 });
-
-// Tüm nöbetçileri döndür
 router.get('/', (req, res) => {
     db.all('SELECT id, name, kredi, is_aktif, pay_edilen_kredi, telegram_id, telefon_no FROM Nobetciler ORDER BY id ASC', [], (err, rows) => {
         if (err) {
@@ -128,8 +135,6 @@ router.get('/', (req, res) => {
         res.json(rows);
     });
 });
-
-// Telegram ID ile nöbetçi bilgilerini getir
 router.get('/by-telegram/:telegramId', (req, res) => {
     const telegramId = req.params.telegramId;
     if (!telegramId) {
@@ -146,8 +151,6 @@ router.get('/by-telegram/:telegramId', (req, res) => {
         res.json(row);
     });
 });
-
-// Bir nöbetçiyi aktif olarak ayarla
 router.post('/:id/set-aktif', (req, res) => {
     const nobetciIdToActivate = parseInt(req.params.id);
     let newActiveGuardName = 'Bilinmiyor';
@@ -155,7 +158,6 @@ router.post('/:id/set-aktif', (req, res) => {
         db.get("SELECT name FROM Nobetciler WHERE id = ?", [nobetciIdToActivate], (errName, rowName) => {
             if (errName) { console.error(`Aktif edilecek nöbetçi adı alınırken hata:`, errName.message); }
             else if (rowName) { newActiveGuardName = rowName.name; }
-
             db.run("UPDATE Nobetciler SET is_aktif = 0", function(errReset) {
                 if (errReset) {
                     console.error("Aktif nöbetçi ayarlanırken (pasif) DB hatası:", errReset.message);
@@ -175,8 +177,6 @@ router.post('/:id/set-aktif', (req, res) => {
         });
     });
 });
-
-// Bir nöbetçinin Telegram ID'sini güncelle
 router.put('/:id/telegram-id', (req, res) => {
     const nobetciId = parseInt(req.params.id);
     const { telegram_id } = req.body;
@@ -193,8 +193,6 @@ router.put('/:id/telegram-id', (req, res) => {
         res.json({ message: `Nöbetçi ID ${nobetciId} için Telegram ID başarıyla güncellendi.` });
     });
 });
-
-// Bir nöbetçinin Telefon Numarasını güncelle
 router.put('/:id/telefon-no', (req, res) => {
     const nobetciId = parseInt(req.params.id);
     const { telefon_no } = req.body;
@@ -210,8 +208,6 @@ router.put('/:id/telefon-no', (req, res) => {
         res.json({ message: `Nöbetçi ID ${nobetciId} için telefon numarası başarıyla güncellendi.` });
     });
 });
-
-// Kredi güncelleme endpoint'leri
 router.put('/kredileri-guncelle', (req, res) => {
     const nobetciKredileri = req.body;
     if (!Array.isArray(nobetciKredileri) || nobetciKredileri.some(n => typeof n.id === 'undefined' || typeof n.kredi === 'undefined')) {
@@ -226,7 +222,6 @@ router.put('/kredileri-guncelle', (req, res) => {
         res.json({ message: `Krediler güncellendi.` });
     });
 });
-
 router.put('/pay-edilen-kredileri-guncelle', (req, res) => {
     const nobetciPayEdilenKredileri = req.body;
     if (!Array.isArray(nobetciPayEdilenKredileri) || nobetciPayEdilenKredileri.some(n => typeof n.id === 'undefined' || typeof n.pay_edilen_kredi === 'undefined')) {
