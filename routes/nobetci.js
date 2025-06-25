@@ -12,72 +12,71 @@ const logger = {
 };
 
 // DÜZELTME: KREDİ PAY DAĞITIM ENDPOINT'İ
-// Frontend'in (arayüz) çağırdığı URL ve metod ile uyumlu hale getirildi.
-// Metod: POST -> PUT
-// URL: /pay-dagit -> /guncelleKazanilanKrediler
+// Frontend'den gelen isteğin adresiyle tam uyumlu hale getirildi.
 router.put('/guncelleKazanilanKrediler', (req, res) => {
-    logger.info("Kredi pay dağıtım işlemi API üzerinden başlatıldı (guncelleKazanilanKrediler).");
-
-    // db.serialize, komutların veritabanında sırayla ve güvenli bir şekilde çalışmasını sağlar.
+    logger.info("Kredi pay dağıtım işlemi API üzerinden başlatıldı (/guncelleKazanilanKrediler).");
     db.serialize(() => {
-        // Güvenli bir operasyon için TRANSACTION başlatıyoruz.
-        // Bu sayede ya tüm güncellemeler başarılı olur ya da bir hata olursa hiçbiri uygulanmaz.
         db.run("BEGIN TRANSACTION", (err) => {
-            if (err) {
-                logger.error("Pay dağıtımı - BEGIN TRANSACTION hatası:", err.message);
-                return res.status(500).json({ success: false, error: "Veritabanı işlemi başlatılamadı." });
-            }
+            if (err) return res.status(500).json({ success: false, error: "Veritabanı işlemi başlatılamadı." });
         });
 
-        // Önce tüm nöbetçilerin mevcut kredi bilgilerini alıyoruz.
         db.all("SELECT id, kredi, pay_edilen_kredi FROM Nobetciler", [], (err, rows) => {
             if (err) {
-                logger.error("Pay dağıtımı - Nöbetçiler alınamadı:", err.message);
-                db.run("ROLLBACK"); // Hata durumunda işlemi geri al.
+                db.run("ROLLBACK");
                 return res.status(500).json({ success: false, error: "Nöbetçi bilgileri alınamadı." });
             }
 
-            // Her bir nöbetçi için güncelleme sorgusunu hazırlayıp çalıştırıyoruz.
             const updatePromises = rows.map(nobetci => {
                 return new Promise((resolve, reject) => {
-                    const kazanilanKredi = nobetci.kredi || 0;
-                    const payEdilenKredi = nobetci.pay_edilen_kredi || 0;
-                    const yeniPayEdilenKredi = payEdilenKredi + kazanilanKredi;
-
-                    db.run(
-                        "UPDATE Nobetciler SET kredi = 0, pay_edilen_kredi = ? WHERE id = ?",
-                        [yeniPayEdilenKredi, nobetci.id],
-                        function(updateErr) {
-                            if (updateErr) {
-                                reject(updateErr);
-                            } else {
-                                resolve(this.changes);
-                            }
-                        }
-                    );
+                    const yeniPayEdilenKredi = (nobetci.pay_edilen_kredi || 0) + (nobetci.kredi || 0);
+                    db.run("UPDATE Nobetciler SET kredi = 0, pay_edilen_kredi = ? WHERE id = ?", [yeniPayEdilenKredi, nobetci.id], (updateErr) => {
+                        if (updateErr) reject(updateErr);
+                        else resolve();
+                    });
                 });
             });
 
-            // Tüm güncelleme işlemlerinin tamamlanmasını bekliyoruz.
-            Promise.all(updatePromises)
-                .then(() => {
-                    // Tüm güncellemeler başarılı olursa, işlemi kalıcı hale getiriyoruz (COMMIT).
-                    db.run("COMMIT", (commitErr) => {
-                        if (commitErr) {
-                            logger.error("Pay dağıtımı - COMMIT hatası:", commitErr.message);
-                            db.run("ROLLBACK"); // Commit başarısız olursa da geri almayı dene.
-                            return res.status(500).json({ success: false, error: "Değişiklikler kaydedilemedi." });
-                        }
-                        logger.info("Kredi pay dağıtımı başarıyla tamamlandı.");
-                        res.json({ success: true, message: "Kredi dağıtımı başarıyla tamamlandı ve kazanılan krediler sıfırlandı." });
-                    });
-                })
-                .catch(promiseErr => {
-                    // Güncellemelerden herhangi biri başarısız olursa, tüm işlemi geri alıyoruz (ROLLBACK).
-                    logger.error("Pay dağıtımı - Güncelleme hatası, ROLLBACK yapılıyor:", promiseErr.message);
-                    db.run("ROLLBACK");
-                    res.status(500).json({ success: false, error: "Krediler güncellenirken bir hata oluştu. İşlem geri alındı." });
+            Promise.all(updatePromises).then(() => {
+                db.run("COMMIT", (commitErr) => {
+                    if (commitErr) {
+                        db.run("ROLLBACK");
+                        return res.status(500).json({ success: false, error: "Değişiklikler kaydedilemedi." });
+                    }
+                    res.json({ success: true, message: "Kredi dağıtımı başarıyla tamamlandı." });
                 });
+            }).catch(promiseErr => {
+                db.run("ROLLBACK");
+                res.status(500).json({ success: false, error: "Krediler güncellenirken bir hata oluştu." });
+            });
+        });
+    });
+});
+
+// YENİ: KULLANICI ADIYLA ŞİFRE SIFIRLAMA ENDPOINT'İ
+// login.js'in "Şifre Sıfırla" butonu için kullanacağı adres.
+router.post('/request-password-reset', (req, res) => {
+    const { username } = req.body;
+    if (!username) {
+        return res.status(400).json({ success: false, error: "Kullanıcı adı gerekli." });
+    }
+
+    db.get("SELECT id FROM Nobetciler WHERE name = ?", [username], (err, row) => {
+        if (err) {
+            return res.status(500).json({ success: false, message: "Veritabanı hatası." });
+        }
+        if (!row) {
+            return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı." });
+        }
+
+        const newPassword = crypto.randomBytes(4).toString('hex');
+        const userId = row.id;
+
+        db.run('UPDATE Nobetciler SET password = ? WHERE id = ?', [newPassword, userId], function(updateErr) {
+            if (updateErr) {
+                return res.status(500).json({ success: false, message: "Şifre güncellenirken hata oluştu." });
+            }
+            logger.info(`Kullanıcı ${username} (ID: ${userId}) şifresi sıfırlandı.`);
+            res.json({ success: true, newPassword: newPassword });
         });
     });
 });
@@ -104,7 +103,7 @@ router.post('/:id/set-aktif', async (req, res) => {
     }
 });
 
-// --- ŞİFRE SIFIRLAMA ENDPOINT'İ ---
+// --- ŞİFRE SIFIRLAMA (ID ile - Panel içi kullanım için) ---
 router.post('/reset-password/:id', async (req, res) => {
     const nobetciId = parseInt(req.params.id, 10);
     if (isNaN(nobetciId)) {

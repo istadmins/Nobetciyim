@@ -10,7 +10,8 @@
 <body class="login-page">
   <div class="login-container">
     <div class="login-box">
-      <h2 class="form-title">LOGIN</h2> <form id="loginForm">
+      <h2 class="form-title">LOGIN</h2>
+      <form id="loginForm">
         <div class="input-group">
           <input type="text" id="username" name="username" placeholder="Kullanıcı Adı" required>
         </div>
@@ -25,85 +26,8 @@
       </div>
     </div>
   </div>
-  <script>
-    document.getElementById('loginForm').addEventListener('submit', async function(e) {
-      e.preventDefault();
-      const username = this.elements.username.value;
-      const password = this.elements.password.value;
-      const messageArea = document.getElementById('login-message-area');
 
-      messageArea.style.display = 'none';
-      messageArea.textContent = '';
-      messageArea.classList.remove('success-message', 'error-message');
-
-      try {
-        const response = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({username, password})
-        });
-        const data = await response.json();
-        if (response.ok && data.token) {
-          localStorage.setItem('token', data.token);
-          window.location.href = "index.html";
-        } else {
-          messageArea.textContent = data.message || data.error || 'Giriş başarısız. Lütfen bilgilerinizi kontrol edin.';
-          messageArea.classList.add('error-message');
-          messageArea.style.display = 'block';
-        }
-      } catch (error) {
-        console.error('Login fetch error:', error);
-        messageArea.textContent = 'Bir ağ hatası oluştu. Lütfen tekrar deneyin.';
-        messageArea.classList.add('error-message');
-        messageArea.style.display = 'block';
-      }
-    });
-
-    const forgotPasswordLink = document.getElementById('forgotPasswordLink');
-    if (forgotPasswordLink) {
-      forgotPasswordLink.addEventListener('click', async function(e) {
-        e.preventDefault();
-        
-        // Şifresi sıfırlanacak kullanıcı adını (veya e-postasını) kullanıcıdan almak daha iyi bir yöntemdir.
-        // Şimdilik, varsayılan olarak 'admin' kullanıcısının şifresini sıfırlayacağız.
-        // Bu kullanıcı adının veritabanındaki 'users' tablosunda bir e-posta adresi tanımlı olmalıdır.
-        const usernameToReset = 'admin'; 
-
-        const userConfirmed = confirm(`"${usernameToReset}" kullanıcısı için şifre sıfırlama işlemi başlatılacaktır. Yeni şifre, sistemde kayıtlı e-posta adresine gönderilecektir. Devam etmek istiyor musunuz?`);
-        const messageArea = document.getElementById('login-message-area');
-        messageArea.style.display = 'none';
-        messageArea.textContent = '';
-        messageArea.classList.remove('success-message', 'error-message');
-
-        if (userConfirmed) {
-          try {
-            // Sunucuya şifre sıfırlama isteği gönder
-            // Bu endpoint'in sunucu tarafında (/routes/auth.js içinde) oluşturulması gerekir.
-            const response = await fetch('/api/auth/initiate-password-reset', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ username: usernameToReset }) 
-            });
-            const data = await response.json();
-
-            if (response.ok && data.success) {
-              messageArea.textContent = data.message || 'Yeni şifreniz kayıtlı e-posta adresinize gönderildi.';
-              messageArea.classList.add('success-message'); // Başarı mesajı için stil
-              messageArea.style.display = 'block';
-            } else {
-              messageArea.textContent = data.message || data.error || 'Şifre sıfırlama isteği gönderilemedi.';
-              messageArea.classList.add('error-message'); // Hata mesajı için stil
-              messageArea.style.display = 'block';
-            }
-          } catch (error) {
-            console.error('Password reset request error:', error);
-            messageArea.textContent = 'Şifre sıfırlama sırasında bir ağ hatası oluştu.';
-            messageArea.classList.add('error-message');
-            messageArea.style.display = 'block';
-          }
-        }
-      });
-    }
-  </script>
+  <!-- Scriptler harici dosyaya taşındı ve 'defer' eklendi -->
+  <script src="login.js" defer></script>
 </body>
 </html>
