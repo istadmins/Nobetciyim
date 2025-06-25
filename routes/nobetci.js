@@ -4,28 +4,89 @@ const router = express.Router();
 const db = require('../db');
 const { notifyAllOfDutyChange } = require('../telegram_bot_handler');
 const crypto = require('crypto');
+const nodemailer = require('nodemailer'); // E-posta için gerekli
+const bcrypt = require('bcrypt'); // Şifreleme için gerekli
 
 const logger = {
-  info: (msg, ...args) => console.log(`[INFO] ${msg}`, ...args),
-  error: (msg, ...args) => console.error(`[ERROR] ${msg}`, ...args),
-  warn: (msg, ...args) => console.warn(`[WARN] ${msg}`, ...args)
+    info: (msg, ...args) => console.log(`[INFO] ${msg}`, ...args),
+    error: (msg, ...args) => console.error(`[ERROR] ${msg}`, ...args),
+    warn: (msg, ...args) => console.warn(`[WARN] ${msg}`, ...args)
 };
 
-// DÜZELTME: KREDİ PAY DAĞITIM ENDPOINT'İ
-// Frontend'den gelen isteğin adresiyle tam uyumlu hale getirildi.
+// DÜZELTME: KULLANICI ADIYLA ŞİFRE SIFIRLAMA VE E-POSTA GÖNDERME
+// login.js'in "Şifre Sıfırla" butonu için kullanacağı DÜZELTİLMİŞ adres.
+router.post('/request-password-reset', async (req, res) => {
+    const { username } = req.body;
+    if (!username || username !== 'admin') {
+        return res.status(400).json({ success: false, error: "Sadece 'admin' kullanıcısı için şifre sıfırlanabilir." });
+    }
+
+    try {
+        const user = await db.getNobetciByName(username);
+        if (!user) {
+            return res.status(404).json({ success: false, message: "Admin kullanıcısı bulunamadı." });
+        }
+
+        // 1. Yeni, rastgele bir şifre oluştur
+        const newPassword = crypto.randomBytes(4).toString('hex').toUpperCase(); // 8 karakterlik yeni şifre
+        const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+        // 2. Veritabanında admin şifresini güncelle
+        await db.updatePassword(user.id, hashedNewPassword);
+        logger.info(`Admin (ID: ${user.id}) şifresi veritabanında güncellendi.`);
+
+        // 3. E-posta gönderme ayarlarını yap
+        const transporter = nodemailer.createTransport({
+            host: process.env.SMTP_HOST,
+            port: process.env.SMTP_PORT,
+            secure: process.env.SMTP_PORT == 465, // port 465 ise true, değilse false
+            auth: {
+                user: process.env.SMTP_USER,
+                pass: process.env.SMTP_PASS,
+            },
+        });
+
+        // 4. E-postayı gönder
+        await transporter.sendMail({
+            from: `"Nöbetçiyim Sistemi" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
+            to: process.env.ADMIN_EMAIL, // .env dosyanızdaki admin e-postası
+            subject: 'Admin Şifresi Sıfırlandı',
+            html: `
+                <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+                    <h2>Admin Hesabı Şifre Sıfırlama</h2>
+                    <p>Merhaba,</p>
+                    <p>Admin hesabınız için yeni bir şifre oluşturulmuştur.</p>
+                    <p><b>Yeni Şifreniz:</b> <strong style="font-size: 1.2em; color: #d9534f;">${newPassword}</strong></p>
+                    <p>Güvenliğiniz için, lütfen giriş yaptıktan sonra bu şifreyi panel ayarlarından değiştiriniz.</p>
+                    <hr>
+                    <p style="font-size: 0.8em; color: #777;">Bu e-posta otomatik olarak gönderilmiştir, lütfen yanıtlamayınız.</p>
+                </div>
+            `,
+        });
+        
+        logger.info(`Admin şifre sıfırlama e-postası başarıyla ${process.env.ADMIN_EMAIL} adresine gönderildi.`);
+        res.json({ success: true, message: 'Şifre sıfırlama e-postası başarıyla gönderildi.' });
+
+    } catch (error) {
+        logger.error('Şifre sıfırlama ve e-posta gönderme hatası:', error);
+        res.status(500).json({ success: false, message: 'Sunucuda bir hata oluştu. Lütfen logları kontrol edin.' });
+    }
+});
+
+
+// --- DİĞER ROTALARINIZ OLDUĞU GİBİ KALIYOR ---
+
 router.put('/guncelleKazanilanKrediler', (req, res) => {
     logger.info("Kredi pay dağıtım işlemi API üzerinden başlatıldı (/guncelleKazanilanKrediler).");
     db.serialize(() => {
         db.run("BEGIN TRANSACTION", (err) => {
             if (err) return res.status(500).json({ success: false, error: "Veritabanı işlemi başlatılamadı." });
         });
-
         db.all("SELECT id, kredi, pay_edilen_kredi FROM Nobetciler", [], (err, rows) => {
             if (err) {
                 db.run("ROLLBACK");
                 return res.status(500).json({ success: false, error: "Nöbetçi bilgileri alınamadı." });
             }
-
             const updatePromises = rows.map(nobetci => {
                 return new Promise((resolve, reject) => {
                     const yeniPayEdilenKredi = (nobetci.pay_edilen_kredi || 0) + (nobetci.kredi || 0);
@@ -35,7 +96,6 @@ router.put('/guncelleKazanilanKrediler', (req, res) => {
                     });
                 });
             });
-
             Promise.all(updatePromises).then(() => {
                 db.run("COMMIT", (commitErr) => {
                     if (commitErr) {
@@ -52,37 +112,6 @@ router.put('/guncelleKazanilanKrediler', (req, res) => {
     });
 });
 
-// YENİ: KULLANICI ADIYLA ŞİFRE SIFIRLAMA ENDPOINT'İ
-// login.js'in "Şifre Sıfırla" butonu için kullanacağı adres.
-router.post('/request-password-reset', (req, res) => {
-    const { username } = req.body;
-    if (!username) {
-        return res.status(400).json({ success: false, error: "Kullanıcı adı gerekli." });
-    }
-
-    db.get("SELECT id FROM Nobetciler WHERE name = ?", [username], (err, row) => {
-        if (err) {
-            return res.status(500).json({ success: false, message: "Veritabanı hatası." });
-        }
-        if (!row) {
-            return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı." });
-        }
-
-        const newPassword = crypto.randomBytes(4).toString('hex');
-        const userId = row.id;
-
-        db.run('UPDATE Nobetciler SET password = ? WHERE id = ?', [newPassword, userId], function(updateErr) {
-            if (updateErr) {
-                return res.status(500).json({ success: false, message: "Şifre güncellenirken hata oluştu." });
-            }
-            logger.info(`Kullanıcı ${username} (ID: ${userId}) şifresi sıfırlandı.`);
-            res.json({ success: true, newPassword: newPassword });
-        });
-    });
-});
-
-
-// --- AKTİF NÖBETÇİ DEĞİŞTİRME ---
 router.post('/:id/set-aktif', async (req, res) => {
     const nobetciIdToSet = parseInt(req.params.id, 10);
     if (isNaN(nobetciIdToSet) || nobetciIdToSet <= 0) {
@@ -103,7 +132,6 @@ router.post('/:id/set-aktif', async (req, res) => {
     }
 });
 
-// --- ŞİFRE SIFIRLAMA (ID ile - Panel içi kullanım için) ---
 router.post('/reset-password/:id', async (req, res) => {
     const nobetciId = parseInt(req.params.id, 10);
     if (isNaN(nobetciId)) {
@@ -111,25 +139,16 @@ router.post('/reset-password/:id', async (req, res) => {
     }
     try {
         const newPassword = crypto.randomBytes(4).toString('hex');
-        db.run('UPDATE Nobetciler SET password = ? WHERE id = ?', [newPassword, nobetciId], function(err) {
-            if (err) {
-                logger.error(`Şifre sıfırlama DB hatası (ID: ${nobetciId}):`, err.message);
-                return res.status(500).json({ success: false, error: "Veritabanı hatası oluştu." });
-            }
-            if (this.changes === 0) {
-                return res.status(404).json({ success: false, error: "Nöbetçi bulunamadı." });
-            }
-            logger.info(`Kullanıcı ${nobetciId} şifresi sıfırlandı.`);
-            res.json({ success: true, newPassword: newPassword });
-        });
+        const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+        await db.updatePassword(nobetciId, hashedNewPassword);
+        logger.info(`Kullanıcı ${nobetciId} şifresi panelden sıfırlandı.`);
+        res.json({ success: true, newPassword: newPassword });
     } catch (error) {
         logger.error(`Şifre sıfırlama genel hata (ID: ${nobetciId}):`, error.message);
         res.status(500).json({ success: false, error: "Sunucu hatası oluştu." });
     }
 });
 
-
-// --- DİĞER ROTALAR ---
 router.get('/', (req, res) => {
     db.all("SELECT id, name, kredi, is_aktif, pay_edilen_kredi, telegram_id, telefon_no FROM Nobetciler ORDER BY id ASC", [], (err, rows) => {
         if (err) {

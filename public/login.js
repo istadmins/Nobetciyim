@@ -1,9 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('loginForm');
     const forgotPasswordLink = document.getElementById('forgotPasswordLink');
-    const messageArea = document.getElementById('loginmessagearea');
+    const messageArea = document.getElementById('loginmessagearea'); // ID'yi kontrol edin, login.js'de bu şekildeydi
 
-    // Mesaj alanını gizlemek için yardımcı fonksiyon
     const hideMessage = () => {
         if (messageArea) {
             messageArea.style.display = 'none';
@@ -12,7 +11,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Mesaj göstermek için yardımcı fonksiyon
     const showMessage = (message, isError = true) => {
         if (messageArea) {
             messageArea.textContent = message;
@@ -21,7 +19,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Giriş yapma işlemi
     if (loginForm) {
         loginForm.addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -39,7 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     localStorage.setItem('token', data.token);
                     window.location.href = "index.html";
                 } else {
-                    showMessage(data.message || data.error || 'Giriş başarısız. Lütfen bilgilerinizi kontrol edin.');
+                    showMessage(data.message || data.error || 'Giriş başarısız. Bilgilerinizi kontrol edin.');
                 }
             } catch (error) {
                 console.error('Login fetch error:', error);
@@ -48,7 +45,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ESKİ SİSTEME DÖNÜŞ: Şifre sıfırlama ve e-posta gönderme
     if (forgotPasswordLink) {
         forgotPasswordLink.addEventListener('click', async function(e) {
             e.preventDefault();
@@ -59,11 +55,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (userConfirmed) {
                 showMessage('İstek işleniyor, lütfen bekleyin...', false);
                 try {
-                    // Sunucuya "hem şifre sıfırla hem e-posta gönder" komutunu yolluyoruz
-                    const response = await fetch('/api/auth/forgot-password', {
+                    // SUNUCUDAKİ DOĞRU ADRESİ ÇAĞIRIYORUZ
+                    const response = await fetch('/api/nobetci/request-password-reset', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ username: 'admin' }) // Admin kullanıcısı için istek
+                        body: JSON.stringify({ username: 'admin' }) // Sunucu 'admin' kullanıcı adını bekliyor
                     });
                     
                     const data = await response.json();
