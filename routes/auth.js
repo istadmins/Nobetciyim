@@ -5,6 +5,9 @@ const db = require('../db');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
+const nodemailer = require('nodemailer');
+
+
 
 // Simple console logger fallback
 const logger = {
@@ -149,10 +152,7 @@ module.exports = router;
 
 // routes/auth.js DOSYASININ EN ALTINA EKLEYİN
 
-const nodemailer = require('nodemailer');
-const crypto = require('crypto');
-const bcrypt = require('bcrypt');
-const { pool } = require('../db'); // db.js dosyanızdan pool'u bu şekilde aldığınızı varsayıyorum
+
 
 // Admin şifresini sıfırlayıp e-posta gönderen endpoint
 router.post('/forgot-password', async (req, res) => {
