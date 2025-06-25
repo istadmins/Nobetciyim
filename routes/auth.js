@@ -146,3 +146,59 @@ router.post('/initiate-password-reset', async (req, res) => {
 });
 
 module.exports = router;
+
+// routes/auth.js DOSYASININ EN ALTINA EKLEYİN
+
+const nodemailer = require('nodemailer');
+const crypto = require('crypto');
+const bcrypt = require('bcrypt');
+const { pool } = require('../db'); // db.js dosyanızdan pool'u bu şekilde aldığınızı varsayıyorum
+
+// Admin şifresini sıfırlayıp e-posta gönderen endpoint
+router.post('/forgot-password', async (req, res) => {
+    const { username } = req.body;
+
+    if (username !== 'admin') {
+        return res.status(400).json({ success: false, message: 'Sadece admin şifresi sıfırlanabilir.' });
+    }
+
+    try {
+        // 1. Yeni, rastgele bir şifre oluştur
+        const newPassword = crypto.randomBytes(8).toString('hex'); // 16 karakterlik güvenli bir şifre
+        const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+        // 2. Veritabanında admin şifresini güncelle
+        await pool.query('UPDATE users SET password = $1 WHERE username = $2', [hashedNewPassword, 'admin']);
+        
+        // 3. E-posta gönderme ayarlarını yap
+        const transporter = nodemailer.createTransport({
+            host: process.env.SMTP_HOST,
+            port: process.env.SMTP_PORT,
+            secure: process.env.SMTP_PORT == 465, // port 465 ise true, değilse false
+            auth: {
+                user: process.env.SMTP_USER,
+                pass: process.env.SMTP_PASS,
+            },
+        });
+
+        // 4. E-postayı gönder
+        await transporter.sendMail({
+            from: `"Nöbetçiyim Sistemi" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
+            to: process.env.ADMIN_EMAIL, // .env dosyanızdaki admin e-postası
+            subject: 'Admin Şifre Sıfırlama Talebi',
+            html: `
+                <p>Merhaba,</p>
+                <p>Admin hesabınız için yeni bir şifre oluşturulmuştur.</p>
+                <p><b>Yeni Şifreniz:</b> ${newPassword}</p>
+                <p>Lütfen giriş yaptıktan sonra bu şifreyi değiştiriniz.</p>
+            `,
+        });
+
+        console.log(`Admin password reset. New password sent to ${process.env.ADMIN_EMAIL}`);
+        res.json({ success: true, message: 'Şifre sıfırlama e-postası gönderildi.' });
+
+    } catch (error) {
+        console.error('Error in /forgot-password route:', error);
+        res.status(500).json({ success: false, message: 'Sunucuda bir hata oluştu.' });
+    }
+});
