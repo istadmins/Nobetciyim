@@ -259,30 +259,6 @@ router.put('/pay-edilen-kredileri-guncelle', (req, res) => {
 });
 
 
-// Telefon numarası güncelleme endpoint'i
-router.put('/:id/telefon-no', authenticateToken, async (req, res) => {
-    const { id } = req.params;
-    const { telefon_no } = req.body;
-    
-    try {
-        await new Promise((resolve, reject) => {
-            db.run(
-                "UPDATE Nobetciler SET telefon_no = ? WHERE id = ?",
-                [telefon_no || null, id],
-                function(err) {
-                    if (err) reject(err);
-                    else if (this.changes === 0) reject(new Error("Nöbetçi bulunamadı"));
-                    else resolve();
-                }
-            );
-        });
-        
-        res.json({ message: "Telefon numarası başarıyla güncellendi" });
-    } catch (error) {
-        console.error("Telefon numarası güncelleme hatası:", error);
-        res.status(500).json({ error: "Telefon numarası güncellenemedi" });
-    }
-});
 
 module.exports = router;
 
