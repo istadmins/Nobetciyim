@@ -83,6 +83,9 @@ window.addEventListener('offline', () => {
 
 document.addEventListener('DOMContentLoaded', async () => {
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> parent of cdf68ca (Revamp UI and refactor main.js for modularity)
   try {
     checkToken();
 
@@ -100,6 +103,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (kuralEkleForm) {
       kuralEkleForm.addEventListener('submit', handleOzelGunKuralEkle);
     }
+<<<<<<< HEAD
 =======
   checkToken();
 
@@ -124,6 +128,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   addAktifNobetciChangeListener();
 
 <<<<<<< HEAD
+=======
+
+    await loadInitialDataAndSetupInterval();
+    addAktifNobetciChangeListener();
+
+>>>>>>> parent of cdf68ca (Revamp UI and refactor main.js for modularity)
     const zamanKredileriniKaydetBtn = document.getElementById('zaman-kredilerini-kaydet');
     if (zamanKredileriniKaydetBtn) {
       zamanKredileriniKaydetBtn.addEventListener('click', kredileriKaydet);
@@ -155,6 +165,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   } catch (error) {
     console.error('Initialization error:', error);
     showNotification('Uygulama yüklenirken hata oluştu', 'error');
+<<<<<<< HEAD
 =======
 
   const zamanKredileriniKaydetBtn = document.getElementById('zaman-kredilerini-kaydet');
@@ -183,6 +194,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 >>>>>>> parent of 75225a4 (Add phone number update endpoint and UI improvements)
+=======
+>>>>>>> parent of cdf68ca (Revamp UI and refactor main.js for modularity)
   }
 });
 
