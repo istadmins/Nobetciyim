@@ -258,10 +258,6 @@ router.put('/pay-edilen-kredileri-guncelle', (req, res) => {
     });
 });
 
-module.exports = router;
-
-
-// routes/nobetci.js dosyasına eklenecek
 
 // Telefon numarası güncelleme endpoint'i
 router.put('/:id/telefon-no', authenticateToken, async (req, res) => {
@@ -287,3 +283,8 @@ router.put('/:id/telefon-no', authenticateToken, async (req, res) => {
         res.status(500).json({ error: "Telefon numarası güncellenemedi" });
     }
 });
+
+module.exports = router;
+
+
+
