@@ -84,6 +84,7 @@ window.addEventListener('offline', () => {
 document.addEventListener('DOMContentLoaded', async () => {
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> parent of cdf68ca (Revamp UI and refactor main.js for modularity)
   try {
@@ -106,27 +107,39 @@ document.addEventListener('DOMContentLoaded', async () => {
 <<<<<<< HEAD
 =======
   checkToken();
+=======
+    checkToken();
+>>>>>>> parent of d8271bc (Add phone number support for duty officers)
 
-  const logoutBtn = document.getElementById('logoutBtn');
-  if (logoutBtn) {
-    logoutBtn.addEventListener('click', handleLogout);
-  }
+    // Hesaplama.js dosyasının yüklenip yüklenmediğini kontrol et
+    if (typeof hesaplaToplamKrediVeDagit !== 'function') {
+        console.error("hesaplaToplamKrediVeDagit fonksiyonu bulunamadı! hesaplama.js dosyası yüklenmemiş olabilir.");
+    }
 
-  const nobetciEkleForm = document.getElementById('nobetciEkleForm');
-  if (nobetciEkleForm) {
-    nobetciEkleForm.addEventListener('submit', handleNobetciEkle);
-  }
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', handleLogout);
+    }
 
-  const kuralEkleForm = document.getElementById('kuralEkleForm');
-  if (kuralEkleForm) {
-    kuralEkleForm.addEventListener('submit', handleOzelGunKuralEkle);
-  }
+    const nobetciEkleForm = document.getElementById('nobetciEkleForm');
+    if (nobetciEkleForm) {
+        nobetciEkleForm.addEventListener('submit', handleNobetciEkle);
+    }
 
+<<<<<<< HEAD
   await loadInitialDataAndSetupInterval();
 >>>>>>> parent of 75225a4 (Add phone number update endpoint and UI improvements)
+=======
+    const kuralEkleForm = document.getElementById('kuralEkleForm');
+    if (kuralEkleForm) {
+        kuralEkleForm.addEventListener('submit', handleOzelGunKuralEkle);
+    }
+>>>>>>> parent of d8271bc (Add phone number support for duty officers)
 
-  addAktifNobetciChangeListener();
+    await loadInitialDataAndSetupInterval();
+    addAktifNobetciChangeListener();
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 =======
 
@@ -167,27 +180,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     showNotification('Uygulama yüklenirken hata oluştu', 'error');
 <<<<<<< HEAD
 =======
+=======
+    const zamanKredileriniKaydetBtn = document.getElementById('zamankredilerinikaydet');
+    if (zamanKredileriniKaydetBtn) {
+        zamanKredileriniKaydetBtn.addEventListener('click', kredileriKaydet);
+    }
+>>>>>>> parent of d8271bc (Add phone number support for duty officers)
 
-  const zamanKredileriniKaydetBtn = document.getElementById('zaman-kredilerini-kaydet');
-  if (zamanKredileriniKaydetBtn) {
-    zamanKredileriniKaydetBtn.addEventListener('click', kredileriKaydet);
-  }
+    const yeniSatirEkleBtn = document.getElementById('yeniSatirEkleBtn');
+    if (yeniSatirEkleBtn) {
+        yeniSatirEkleBtn.addEventListener('click', addNewTimeRow);
+    }
 
-  const yeniSatirEkleBtn = document.getElementById('yeniSatirEkleBtn');
-  if (yeniSatirEkleBtn) {
-    yeniSatirEkleBtn.addEventListener('click', addNewTimeRow);
-  }
-
-  const baslatKrediDagitimiBtn = document.getElementById('baslatKrediDagitimiBtn');
-  if (baslatKrediDagitimiBtn) {
-    baslatKrediDagitimiBtn.addEventListener('click', async () => {
-        if (typeof hesaplaToplamKrediVeDagit === 'function') {
-            try {
-                await hesaplaToplamKrediVeDagit();
-            } catch (error) {
-                console.error("Kredi dağıtımı sırasında hata:", error);
-                alert("Kredi dağıtımı sırasında bir hata oluştu.");
+    const baslatKrediDagitimiBtn = document.getElementById('baslatKrediDagitimiBtn');
+    if (baslatKrediDagitimiBtn) {
+        baslatKrediDagitimiBtn.addEventListener('click', async () => {
+            if (typeof hesaplaToplamKrediVeDagit === 'function') {
+                try {
+                    await hesaplaToplamKrediVeDagit();
+                } catch (error) {
+                    console.error("Kredi dağıtımı sırasında hata:", error);
+                    alert("Kredi dağıtımı sırasında bir hata oluştu.");
+                }
+            } else {
+                console.error("hesaplaToplamKrediVeDagit fonksiyonu bulunamadı! Lütfen hesaplama.js dosyasını kontrol edin.");
+                alert("Kredi hesaplama fonksiyonu bulunamadı. Lütfen konsolu kontrol edin.");
             }
+<<<<<<< HEAD
         } else {
             console.error("hesaplaToplamKrediVeDagit fonksiyonu bulunamadı! Lütfen hesaplama.js dosyasını kontrol edin.");
             alert("Kredi hesaplama fonksiyonu bulunamadı. Lütfen konsolu kontrol edin.");
@@ -197,37 +216,31 @@ document.addEventListener('DOMContentLoaded', async () => {
 =======
 >>>>>>> parent of cdf68ca (Revamp UI and refactor main.js for modularity)
   }
+=======
+        });
+    }
+>>>>>>> parent of d8271bc (Add phone number support for duty officers)
 });
 
 async function loadInitialDataAndSetupInterval() {
     if (typeof getNobetciler === 'function') await getNobetciler();
     if (typeof kurallariYukle === 'function') await kurallariYukle();
     if (typeof zamanKrediTablosunuDoldur === 'function') await zamanKrediTablosunuDoldur();
-    if (typeof window.refreshCalendarData === 'function') { // Takvim verilerini de ilk yüklemede çek
+    if (typeof window.refreshCalendarData === 'function') {
         await window.refreshCalendarData();
     }
-
 
     if (typeof getNobetciler === 'function') {
         if (getNobetcilerIntervalId) {
             clearInterval(getNobetcilerIntervalId);
         }
-        // Arayüz güncelleme sıklığını buradan ayarlayabilirsiniz.
-        // Örneğin 10 saniyede bir güncelleme için 10000.
-        // Daha sık güncelleme, sunucuya daha fazla istek anlamına gelir.
-        // Uygulamanızın ihtiyacına göre bir denge bulun.
+        
         const guncellemeAraligi = 10000; // 10 saniye
         getNobetcilerIntervalId = setInterval(async () => {
             console.log(`Nöbetçi listesi ve krediler periyodik olarak güncelleniyor (${guncellemeAraligi / 1000} saniyede bir)...`);
             await getNobetciler();
-            // Nöbetçi listesi güncellendiğinde takvimi de yenilemek isteyebilirsiniz
-            // Ancak bu, takvimin sürekli yeniden çizilmesine neden olabilir.
-            // Sadece nöbetçi sayısı veya isimleri değiştiğinde takvimi yenilemek daha iyi olabilir.
-            // Şimdilik sadece getNobetciler çağrılıyor.
-            // if (typeof window.refreshCalendarData === 'function') {
-            //    await window.refreshCalendarData();
-            // }
         }, guncellemeAraligi);
+        
         console.log(`Nöbetçi listesi ${guncellemeAraligi / 1000} saniyede bir güncellenecek.`);
     }
 }
@@ -240,6 +253,7 @@ function addAktifNobetciChangeListener() {
             if (event.target.type === 'radio' && event.target.name === 'aktifNobetciSecimi') {
                 const secilenNobetciId = event.target.value;
                 console.log(`Aktif nöbetçi seçildi: ID ${secilenNobetciId}`);
+                
                 try {
                     const response = await fetch(`/api/nobetci/${secilenNobetciId}/set-aktif`, {
                         method: 'POST',
@@ -248,15 +262,16 @@ function addAktifNobetciChangeListener() {
                             'Authorization': 'Bearer ' + localStorage.getItem('token')
                         }
                     });
+
                     const data = await response.json();
+
                     if (!response.ok) {
                         alert(data.error || `Sunucu hatası: ${response.status}`);
                         if (typeof getNobetciler === 'function') await getNobetciler();
                     } else {
                         console.log(data.message || `Nöbetçi ID ${secilenNobetciId} aktif olarak ayarlandı.`);
-                        // Aktif nöbetçi değiştiğinde takvimi de yenileyebiliriz
                         if (typeof window.refreshCalendarData === 'function') {
-                           await window.refreshCalendarData();
+                            await window.refreshCalendarData();
                         }
                     }
                 } catch (error) {
