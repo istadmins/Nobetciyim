@@ -259,6 +259,7 @@ router.put('/pay-edilen-kredileri-guncelle', (req, res) => {
 });
 
 module.exports = router;
+<<<<<<< HEAD
 
 // routes/nobetci.js dosyasına eklenecek
 
@@ -286,3 +287,5 @@ router.put('/:id/telefon-no', authenticateToken, async (req, res) => {
         res.status(500).json({ error: "Telefon numarası güncellenemedi" });
     }
 });
+=======
+>>>>>>> parent of 75225a4 (Add phone number update endpoint and UI improvements)
