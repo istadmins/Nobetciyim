@@ -287,14 +287,3 @@ router.put('/:id/telefon-no', authenticateToken, async (req, res) => {
         res.status(500).json({ error: "Telefon numarası güncellenemedi" });
     }
 });
-<<<<<<< HEAD
-=======
->>>>>>> parent of 75225a4 (Add phone number update endpoint and UI improvements)
-=======
->>>>>>> parent of 75225a4 (Add phone number update endpoint and UI improvements)
-=======
->>>>>>> parent of 75225a4 (Add phone number update endpoint and UI improvements)
-=======
->>>>>>> parent of 75225a4 (Add phone number update endpoint and UI improvements)
-=======
->>>>>>> parent of d8271bc (Add phone number support for duty officers)
