@@ -82,6 +82,7 @@ window.addEventListener('offline', () => {
 });
 
 document.addEventListener('DOMContentLoaded', async () => {
+<<<<<<< HEAD
   try {
     checkToken();
 
@@ -99,10 +100,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (kuralEkleForm) {
       kuralEkleForm.addEventListener('submit', handleOzelGunKuralEkle);
     }
+=======
+  checkToken();
 
-    await loadInitialDataAndSetupInterval();
-    addAktifNobetciChangeListener();
+  const logoutBtn = document.getElementById('logoutBtn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', handleLogout);
+  }
 
+  const nobetciEkleForm = document.getElementById('nobetciEkleForm');
+  if (nobetciEkleForm) {
+    nobetciEkleForm.addEventListener('submit', handleNobetciEkle);
+  }
+
+  const kuralEkleForm = document.getElementById('kuralEkleForm');
+  if (kuralEkleForm) {
+    kuralEkleForm.addEventListener('submit', handleOzelGunKuralEkle);
+  }
+
+  await loadInitialDataAndSetupInterval();
+>>>>>>> parent of 75225a4 (Add phone number update endpoint and UI improvements)
+
+  addAktifNobetciChangeListener();
+
+<<<<<<< HEAD
     const zamanKredileriniKaydetBtn = document.getElementById('zaman-kredilerini-kaydet');
     if (zamanKredileriniKaydetBtn) {
       zamanKredileriniKaydetBtn.addEventListener('click', kredileriKaydet);
@@ -134,6 +155,34 @@ document.addEventListener('DOMContentLoaded', async () => {
   } catch (error) {
     console.error('Initialization error:', error);
     showNotification('Uygulama yüklenirken hata oluştu', 'error');
+=======
+
+  const zamanKredileriniKaydetBtn = document.getElementById('zaman-kredilerini-kaydet');
+  if (zamanKredileriniKaydetBtn) {
+    zamanKredileriniKaydetBtn.addEventListener('click', kredileriKaydet);
+  }
+
+  const yeniSatirEkleBtn = document.getElementById('yeniSatirEkleBtn');
+  if (yeniSatirEkleBtn) {
+    yeniSatirEkleBtn.addEventListener('click', addNewTimeRow);
+  }
+
+  const baslatKrediDagitimiBtn = document.getElementById('baslatKrediDagitimiBtn');
+  if (baslatKrediDagitimiBtn) {
+    baslatKrediDagitimiBtn.addEventListener('click', async () => {
+        if (typeof hesaplaToplamKrediVeDagit === 'function') {
+            try {
+                await hesaplaToplamKrediVeDagit();
+            } catch (error) {
+                console.error("Kredi dağıtımı sırasında hata:", error);
+                alert("Kredi dağıtımı sırasında bir hata oluştu.");
+            }
+        } else {
+            console.error("hesaplaToplamKrediVeDagit fonksiyonu bulunamadı! Lütfen hesaplama.js dosyasını kontrol edin.");
+            alert("Kredi hesaplama fonksiyonu bulunamadı. Lütfen konsolu kontrol edin.");
+        }
+    });
+>>>>>>> parent of 75225a4 (Add phone number update endpoint and UI improvements)
   }
 });
 
