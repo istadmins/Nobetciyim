@@ -26,7 +26,7 @@ const generalLimiter = rateLimit({
 
 // Route dosyalarını çağır
 const authRoutes = require('./routes/auth');
-const nobetciRoutes = require('./routes/nobetci');
+const nobetciRoutes = require('./routes/nobetciler');
 const kurallarRoutes = require('./routes/kurallar');
 const nobetKredileriRoutes = require('./routes/nobet-kredileri');
 const takvimRemarksRoutes = require('./routes/takvim_remarks');
