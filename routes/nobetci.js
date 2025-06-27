@@ -259,13 +259,7 @@ router.put('/pay-edilen-kredileri-guncelle', (req, res) => {
 });
 
 module.exports = router;
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> parent of d8271bc (Add phone number support for duty officers)
+
 
 // routes/nobetci.js dosyasına eklenecek
 
