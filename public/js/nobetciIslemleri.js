@@ -1,7 +1,7 @@
 /**
  * nobetciIslemleri.js
  * Bu dosya, nöbetçi listesi üzerindeki tüm işlemleri (ekleme, silme, güncelleme) yönetir.
- * Ayrıca kredi sıfırlama gibi ek mantıkları da içerir.
+ * YENİ: Vardiya durumunu (Gündüz/Akşam) hesaplar ve arayüzde gösterir.
  */
 
 // Nöbetçilerin kazanılan kredilerini en düşüğe göre sıfırlayıp günceller.
@@ -74,13 +74,13 @@ async function getNobetciler() {
         tbody.innerHTML = ''; // Mevcut tabloyu temizle
 
         if (nobetcilerData && nobetcilerData.length > 0) {
-            let aktifNobetciVarMi = nobetcilerData.some(n => n.is_aktif === 1);
+            let aktifNobetciId = (nobetcilerData.find(n => n.is_aktif === 1) || {}).id;
 
-            nobetcilerData.forEach((nobetci, index) => {
+            nobetcilerData.forEach((nobetci) => {
                 const tr = document.createElement('tr');
                 tr.dataset.id = nobetci.id; // Satırın hangi nöbetçiye ait olduğunu belirtmek için
 
-                const isChecked = aktifNobetciVarMi ? (nobetci.is_aktif === 1) : (index === 0);
+                const isChecked = nobetci.id === aktifNobetciId;
                 const kazanilanKredi = nobetci.kredi || 0;
                 const payEdilenKredi = nobetci.pay_edilen_kredi || 0;
                 const kalanKredi = payEdilenKredi - kazanilanKredi;
@@ -106,6 +106,10 @@ async function getNobetciler() {
                 `;
                 tbody.appendChild(tr);
             });
+            
+            // YENİ: Vardiya durumunu hesapla ve göster
+            await displayVardiyaStatus(nobetcilerData);
+
         } else {
             tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">Kayıtlı nöbetçi bulunmamaktadır.</td></tr>`;
         }
@@ -118,7 +122,112 @@ async function getNobetciler() {
     }
 }
 
-// Telegram ID'sini düzenlemek için prompt açan fonksiyon
+// YENİ FONKSİYON: GÜNCEL VARDİYA DURUMUNU GÖSTERİR
+async function displayVardiyaStatus(nobetcilerData) {
+    const tableSection = document.getElementById('nobetciListesiBolumu');
+    if (!tableSection) return;
+
+    // Durum kutusunu bul veya oluştur
+    let statusDiv = document.getElementById('vardiyaStatusDiv');
+    if (!statusDiv) {
+        statusDiv = document.createElement('div');
+        statusDiv.id = 'vardiyaStatusDiv';
+        statusDiv.style.padding = '15px';
+        statusDiv.style.marginBottom = '20px';
+        statusDiv.style.border = '1px solid #ddd';
+        statusDiv.style.backgroundColor = '#f0f8ff';
+        statusDiv.style.borderRadius = '8px';
+        tableSection.insertBefore(statusDiv, tableSection.children[1]); // Başlığın altına ekle
+    }
+
+    // Gerekli verileri ve mevcut zamanı al
+    const now = new Date();
+    const day = now.getDay(); // 0:Pazar, 1:Pazartesi, ..., 6:Cumartesi
+    const hour = now.getHours();
+
+    // Takvimden bu haftanın ve gelecek haftanın nöbetçisini bul
+    const { buHaftaNobetci, gelecekHaftaNobetci } = getNobetcilerFromCalendar();
+
+    let aktifOlmasiGerekenNobetci = buHaftaNobetci;
+    let vardiyaAdi = "Akşam Vardiyası";
+
+    // Pazartesi ve saat 09:00-17:00 arası ise gündüz nöbetçisi aktif olmalı
+    if (day === 1 && hour >= 9 && hour < 17) {
+        aktifOlmasiGerekenNobetci = gelecekHaftaNobetci;
+        vardiyaAdi = "Gündüz Vardiyası";
+    }
+
+    // Sunucudan gelen aktif nöbetçi bilgisini al
+    const sunucudakiAktifNobetci = nobetcilerData.find(n => n.is_aktif === 1);
+
+    // Durum mesajını oluştur
+    let statusHTML = `
+        <h3 style="margin-top:0; color: #337ab7;">Vardiya Durumu</h3>
+        <p><strong>Bu Haftanın Nöbetçisi (Akşam):</strong> ${buHaftaNobetci || 'Belirlenemedi'}</p>
+        <p><strong>Gelecek Haftanın Nöbetçisi (Gündüz):</strong> ${gelecekHaftaNobetci || 'Belirlenemedi'}</p>
+        <hr style="border-top: 1px solid #ccc; margin: 10px 0;">
+        <p style="font-size: 1.1em;">
+            Şu anki <strong>${vardiyaAdi}</strong> nöbetçisi olması gereken kişi: 
+            <strong style="color: green;">${aktifOlmasiGerekenNobetci || 'Bilinmiyor'}</strong>
+        </p>
+    `;
+
+    // Arayüzdeki durum ile sunucudaki durum farklıysa uyarı göster
+    if (sunucudakiAktifNobetci && aktifOlmasiGerekenNobetci && sunucudakiAktifNobetci.name !== aktifOlmasiGerekenNobetci) {
+        statusHTML += `
+            <div style="background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 10px; border-radius: 5px; margin-top: 10px;">
+                <strong>UYARI:</strong> Arayüzde aktif olarak işaretli nöbetçi 
+                (<strong>${sunucudakiAktifNobetci.name}</strong>) ile olması gereken nöbetçi 
+                (<strong>${aktifOlmasiGerekenNobetci}</strong>) farklı. 
+                Kredilerin doğru hesaplanması için sunucu tarafındaki zamanlanmış görevin (cron job) güncellenmesi gerekmektedir.
+            </div>
+        `;
+    } else {
+         statusHTML += `<p style="color: #5cb85c;">✓ Sunucudaki aktif nöbetçi ile olması gereken nöbetçi eşleşiyor.</p>`;
+    }
+    
+    statusDiv.innerHTML = statusHTML;
+}
+
+// YENİ YARDIMCI FONKSİYON: Tarihe göre hafta numarasını verir.
+function getWeekNumber(d) {
+    d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    return weekNo;
+}
+
+// YENİ YARDIMCI FONKSİYON: Nöbet takviminden nöbetçileri okur.
+function getNobetcilerFromCalendar() {
+    const takvimBody = document.getElementById('takvimBody');
+    if (!takvimBody) return { buHaftaNobetci: null, gelecekHaftaNobetci: null };
+
+    const currentWeek = getWeekNumber(new Date());
+    const nextWeek = currentWeek + 1;
+
+    let buHaftaNobetci = null;
+    let gelecekHaftaNobetci = null;
+
+    const rows = takvimBody.getElementsByTagName('tr');
+    for (let row of rows) {
+        const weekCell = row.cells[0]; // Hafta sütunu
+        const nobetciCell = row.cells[9]; // Nöbetçi Adı sütunu
+        if (weekCell && nobetciCell) {
+            const weekNumberInRow = parseInt(weekCell.textContent);
+            if (weekNumberInRow === currentWeek) {
+                buHaftaNobetci = nobetciCell.textContent.trim();
+            }
+            if (weekNumberInRow === nextWeek) {
+                gelecekHaftaNobetci = nobetciCell.textContent.trim();
+            }
+        }
+    }
+    return { buHaftaNobetci, gelecekHaftaNobetci };
+}
+
+// --- MEVCUT BUTON FONKSİYONLARI (DEĞİŞİKLİK YOK) ---
+
 window.editTelegramIdPrompt = async function(id, mevcutId) {
     const yeniId = prompt(`Yeni Telegram Chat ID'sini girin (mevcut: ${mevcutId}):`, mevcutId);
     if (yeniId !== null) {
@@ -138,7 +247,6 @@ window.editTelegramIdPrompt = async function(id, mevcutId) {
     }
 };
 
-// Telefon numarasını düzenlemek için prompt açan fonksiyon
 window.editTelefonNoPrompt = async function(id, mevcutNo) {
     const yeniNo = prompt(`Yeni Telefon Numarasını girin (mevcut: ${mevcutNo}):`, mevcutNo);
     if (yeniNo !== null) {
@@ -158,7 +266,6 @@ window.editTelefonNoPrompt = async function(id, mevcutNo) {
     }
 };
 
-// Nöbetçiyi silen fonksiyon
 window.nobetciSil = async function(id) {
     if (confirm('Bu nöbetçiyi kalıcı olarak silmek istediğinize emin misiniz?')) {
         try {
@@ -178,7 +285,6 @@ window.nobetciSil = async function(id) {
     }
 };
 
-// Şifre sıfırlama fonksiyonu
 window.sifreSifirla = async function(id) {
     if (confirm('Bu nöbetçinin şifresini sıfırlamak istediğinizden emin misiniz? Yeni şifre size gösterilecektir.')) {
         try {
@@ -195,17 +301,14 @@ window.sifreSifirla = async function(id) {
     }
 };
 
-// Yeni nöbetçi ekleme formu gönderildiğinde çalışan fonksiyon
 async function handleNobetciEkle(e) {
     e.preventDefault();
     const formData = new FormData(e.target);
     const data = Object.fromEntries(formData.entries());
-
     if (!data.name || !data.password) {
         alert("İsim ve şifre alanları zorunludur.");
         return;
     }
-
     try {
         const response = await fetch('/api/nobetci', {
             method: 'POST',
@@ -215,7 +318,7 @@ async function handleNobetciEkle(e) {
         const responseData = await response.json();
         if (!response.ok) throw new Error(responseData.error);
         alert(`${data.name} başarıyla eklendi.`);
-        e.target.reset(); // Formu temizle
+        e.target.reset();
         await getNobetciler();
         if (typeof hesaplaToplamKrediVeDagit === 'function') await hesaplaToplamKrediVeDagit();
         if (typeof window.refreshCalendarData === 'function') await window.refreshCalendarData();
