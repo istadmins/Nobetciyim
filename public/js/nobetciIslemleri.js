@@ -35,10 +35,19 @@ async function sifirlaVeKazanilanKredileriGuncelle() {
         return true;
     }
 
-    const enDusukKredi = Math.min(...nobetciler.map(n => n.kredi));
+    // Yeni eklenen nöbetçiyi (kredisi 0 ve en yüksek id'ye sahip olan) hariç tut
+    const maxId = Math.max(...nobetciler.map(n => n.id));
+    const yeniEklenen = nobetciler.find(n => n.kredi === 0 && n.id === maxId);
+    let nobetcilerHaric = nobetciler;
+    if (yeniEklenen) {
+        nobetcilerHaric = nobetciler.filter(n => n.id !== yeniEklenen.id);
+    }
+
+    // Sıfırlama ve çıkarma işlemini yeni eklenen hariç diğerlerine uygula
+    const enDusukKredi = Math.min(...nobetcilerHaric.map(n => n.kredi));
     const guncellenecekKazanilanKrediler = nobetciler.map(n => ({
         id: n.id,
-        kredi: n.kredi - enDusukKredi
+        kredi: yeniEklenen && n.id === yeniEklenen.id ? 0 : n.kredi - enDusukKredi
     }));
 
     try {
