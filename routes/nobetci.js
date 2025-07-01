@@ -138,7 +138,7 @@ router.post('/reset-password/:id', async (req, res) => {
 // --- DİĞER TÜM NÖBETÇİ İŞLEMLERİ (DEĞİŞTİRİLMEDEN KORUNDU) ---
 
 // Yeni nöbetçi ekle
-router.post('/', async (req, res) => {
+router.post('/', (req, res) => {
     const { name, password, telegram_id, telefon_no } = req.body;
     const initialKredi = 0;
     if (!name || !password) {
@@ -149,7 +149,7 @@ router.post('/', async (req, res) => {
     const telefonNoToSave = (telefon_no && String(telefon_no).trim() !== "") ? String(telefon_no).trim() : null;
     db.run('INSERT INTO Nobetciler (name, kredi, password, telegram_id, telefon_no, pay_edilen_kredi) VALUES (?, ?, ?, ?, ?, ?)',
         [name, initialKredi, hashedPassword, telegramIdToSave, telefonNoToSave, 0],
-        async function(err) {
+        function(err) {
             if (err) {
                 console.error("Yeni nöbetçi eklenirken DB hatası:", err.message);
                 if (err.message.includes("UNIQUE constraint failed: Nobetciler.telegram_id") && telegramIdToSave !== null) {
@@ -160,9 +160,6 @@ router.post('/', async (req, res) => {
                 }
                 return res.status(500).json({ error: "Nöbetçi eklenirken bir sunucu hatası oluştu." });
             }
-            await getNobetciler();
-            if (typeof hesaplaToplamKrediVeDagit === 'function') await hesaplaToplamKrediVeDagit();
-            if (typeof window.refreshCalendarData === 'function') await window.refreshCalendarData();
             res.status(201).json({
                 id: this.lastID, name, kredi: initialKredi, telegram_id: telegramIdToSave, telefon_no: telefonNoToSave, pay_edilen_kredi: 0, message: "Nöbetçi başarıyla eklendi."
             });
