@@ -59,64 +59,66 @@ async function sifirlaVeKazanilanKredileriGuncelle() {
 
 // Nöbetçileri sunucudan getiren ve tabloyu güncelleyen ana fonksiyon
 async function getNobetciler() {
-    try {
-        const response = await fetch('/api/nobetci', {
-            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
-        });
-        const tbody = document.querySelector('#nobetciTable tbody');
-        if (!tbody) return false;
-
-        if (!response.ok) {
-            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">Nöbetçiler yüklenemedi. Sunucu hatası.</td></tr>`;
-            return false;
-        }
-
-        const nobetcilerData = await response.json();
-        tbody.innerHTML = ''; // Mevcut tabloyu temizle
-
-        if (nobetcilerData && nobetcilerData.length > 0) {
-            let aktifNobetciId = (nobetcilerData.find(n => n.is_aktif === 1) || {}).id;
-
-            nobetcilerData.forEach((nobetci, index) => {
-                const tr = document.createElement('tr');
-                tr.dataset.id = nobetci.id;
-
-                const isChecked = aktifNobetciId ? (nobetci.id === aktifNobetciId) : (index === 0);
-                const kazanilanKredi = nobetci.kredi || 0;
-                const payEdilenKredi = nobetci.pay_edilen_kredi || 0;
-                const kalanKredi = payEdilenKredi - kazanilanKredi;
-                const telegramId = nobetci.telegram_id || "-";
-                const telefonNo = nobetci.telefon_no || "-";
-
-                tr.innerHTML = `
-                    <td>
-                        <input type="radio" name="aktifNobetciSecimi" value="${nobetci.id}" ${isChecked ? 'checked' : ''}>
-                    </td>
-                    <td>${nobetci.name}</td>
-                    <td>${telegramId}</td>
-                    <td>${telefonNo}</td>
-                    <td>${kazanilanKredi}</td>
-                    <td>${payEdilenKredi}</td>
-                    <td>${kalanKredi}</td>
-                    <td>
-                        <button class="btn btn-info btn-sm" data-action="edit-telegram" title="Telegram ID Düzenle"><i class="fa fa-telegram"></i></button>
-                        <button class="btn btn-secondary btn-sm" data-action="edit-phone" title="Telefon No Düzenle"><i class="fa fa-phone"></i></button>
-                        <button class="btn btn-warning btn-sm" data-action="reset-password" title="Şifre Sıfırla"><i class="fa fa-key"></i></button>
-                        <button class="btn btn-danger btn-sm" data-action="delete" title="Nöbetçiyi Sil"><i class="fa fa-trash"></i></button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
+    return new Promise(async (resolve, reject) => {
+        try {
+            const response = await fetch('/api/nobetci', {
+                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
             });
-        } else {
-            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">Kayıtlı nöbetçi bulunmamaktadır.</td></tr>`;
+            const tbody = document.querySelector('#nobetciTable tbody');
+            if (!tbody) return resolve(false);
+
+            if (!response.ok) {
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">Nöbetçiler yüklenemedi. Sunucu hatası.</td></tr>`;
+                return resolve(false);
+            }
+
+            const nobetcilerData = await response.json();
+            tbody.innerHTML = '';
+
+            if (nobetcilerData && nobetcilerData.length > 0) {
+                let aktifNobetciId = (nobetcilerData.find(n => n.is_aktif === 1) || {}).id;
+
+                nobetcilerData.forEach((nobetci, index) => {
+                    const tr = document.createElement('tr');
+                    tr.dataset.id = nobetci.id;
+
+                    const isChecked = aktifNobetciId ? (nobetci.id === aktifNobetciId) : (index === 0);
+                    const kazanilanKredi = nobetci.kredi || 0;
+                    const payEdilenKredi = nobetci.pay_edilen_kredi || 0;
+                    const kalanKredi = payEdilenKredi - kazanilanKredi;
+                    const telegramId = nobetci.telegram_id || "-";
+                    const telefonNo = nobetci.telefon_no || "-";
+
+                    tr.innerHTML = `
+                        <td>
+                            <input type="radio" name="aktifNobetciSecimi" value="${nobetci.id}" ${isChecked ? 'checked' : ''}>
+                        </td>
+                        <td>${nobetci.name}</td>
+                        <td>${telegramId}</td>
+                        <td>${telefonNo}</td>
+                        <td>${kazanilanKredi}</td>
+                        <td>${payEdilenKredi}</td>
+                        <td>${kalanKredi}</td>
+                        <td>
+                            <button class="btn btn-info btn-sm" data-action="edit-telegram" title="Telegram ID Düzenle"><i class="fa fa-telegram"></i></button>
+                            <button class="btn btn-secondary btn-sm" data-action="edit-phone" title="Telefon No Düzenle"><i class="fa fa-phone"></i></button>
+                            <button class="btn btn-warning btn-sm" data-action="reset-password" title="Şifre Sıfırla"><i class="fa fa-key"></i></button>
+                            <button class="btn btn-danger btn-sm" data-action="delete" title="Nöbetçiyi Sil"><i class="fa fa-trash"></i></button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } else {
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">Kayıtlı nöbetçi bulunmamaktadır.</td></tr>`;
+            }
+            resolve(true);
+        } catch (error) {
+            console.error("Nöbetçiler getirilirken bir hata oluştu:", error);
+            const tbody = document.querySelector('#nobetciTable tbody');
+            if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">Bir hata oluştu. Lütfen konsolu kontrol edin.</td></tr>`;
+            resolve(false);
         }
-        return true;
-    } catch (error) {
-        console.error("Nöbetçiler getirilirken bir hata oluştu:", error);
-        const tbody = document.querySelector('#nobetciTable tbody');
-        if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">Bir hata oluştu. Lütfen konsolu kontrol edin.</td></tr>`;
-        return false;
-    }
+    });
 }
 
 // --- BUTON İŞLEMLERİ ---
