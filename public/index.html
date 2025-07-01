@@ -150,13 +150,34 @@
         #logoutBtn:hover {
             background: #b71c1c;
         }
+        .green-bg-header {
+            background: #00cc88;
+            color: #fff;
+            border-radius: 10px;
+            padding: 24px 0 16px 0;
+            margin-bottom: 0;
+            text-align: center;
+            font-size: 2em;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+        .green-bg-section {
+            background: #00cc88;
+            color: #fff;
+            border-radius: 10px;
+            padding: 18px 0 10px 0;
+            margin-bottom: 0;
+            text-align: center;
+            font-size: 1.3em;
+            font-weight: bold;
+        }
     </style>
 
 </head>
 <body>
     <header>
-        <div class="container">
-            <h1>Nöbetçi Yönetim Sistemi</h1>
+        <div class="container green-bg-header">
+            <h1 style="margin: 0; font-size: 1.5em; font-weight: bold; letter-spacing: 1px; color: #fff;">Nöbetçi Yönetim Sistemi</h1>
             <nav>
                 <ul>
                     <li><a href="#nobetciListesiBolumu">Nöbetçi Listesi</a></li>
@@ -172,10 +193,9 @@
 
     <main class="container">
         <section id="nobetciListesiBolumu">
-            <h2>Nöbetçi Listesi</h2>
+            <div class="green-bg-section">Nöbetçi Listesi</div>
             <div style="text-align: center; margin-bottom: 15px;">
                 <button id="baslatKrediDagitimiBtn" class="btn btn-success" style="margin-right: 10px;">Başlat</button>
-                
             </div>
             <div class="table-responsive">
                 <table id="nobetciTable">
