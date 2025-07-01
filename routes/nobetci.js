@@ -91,6 +91,50 @@ router.post('/reset-admin-password', (req, res) => {
     });
 });
 
+// Şifre Sıfırlama (Her nöbetçi için)
+router.post('/reset-password/:id', async (req, res) => {
+    const nobetciId = parseInt(req.params.id);
+    if (isNaN(nobetciId)) {
+        return res.status(400).json({ error: 'Geçersiz nöbetçi ID.' });
+    }
+    try {
+        const nobetci = await db.getNobetciById(nobetciId);
+        if (!nobetci) {
+            return res.status(404).json({ error: 'Nöbetçi bulunamadı.' });
+        }
+        // Yeni şifre üret
+        const newPassword = generateRandomPassword(8);
+        const hashedPassword = bcrypt.hashSync(newPassword, 10);
+        // Şifreyi güncelle
+        await new Promise((resolve, reject) => {
+            db.run('UPDATE Nobetciler SET password = ? WHERE id = ?', [hashedPassword, nobetciId], function(err) {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+        // Telegram'a gönder
+        if (nobetci.telegram_id) {
+            const botToken = process.env.TELEGRAM_BOT_TOKEN;
+            const message = `🔐 *Şifre Sıfırlandı*\n\n✅ Web paneli şifreniz başarıyla sıfırlandı.\n🆕 *Yeni şifreniz:* \`${newPassword}\`\n\n🌐 Web paneline giriş için sistem yöneticinizden adres alın\n👤 *Kullanıcı adınız:* ${nobetci.name}\n\n⚠️ *Güvenlik:* Bu şifreyi not alın ve güvenli bir yerde saklayın. İlk girişte değiştirmeniz önerilir.`;
+            const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+            try {
+                await axios.post(url, {
+                    chat_id: nobetci.telegram_id,
+                    text: message,
+                    parse_mode: 'Markdown'
+                });
+            } catch (err) {
+                console.error('Telegram mesajı gönderilemedi:', err.message);
+            }
+        }
+        // API yanıtı
+        res.json({ message: 'Şifre başarıyla sıfırlandı.', newPassword });
+    } catch (error) {
+        console.error('Şifre sıfırlama hatası:', error);
+        res.status(500).json({ error: 'Şifre sıfırlanırken bir hata oluştu.' });
+    }
+});
+
 // --- DİĞER TÜM NÖBETÇİ İŞLEMLERİ (DEĞİŞTİRİLMEDEN KORUNDU) ---
 
 // Yeni nöbetçi ekle
@@ -257,8 +301,6 @@ router.put('/pay-edilen-kredileri-guncelle', (req, res) => {
         res.json({ message: `Pay edilen krediler güncellendi.` });
     });
 });
-
-
 
 module.exports = router;
 
