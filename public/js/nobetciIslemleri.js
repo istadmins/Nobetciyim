@@ -27,6 +27,9 @@ async function sifirlaVeKazanilanKredileriGuncelle() {
         kredi: parseInt(satir.cells[4].textContent) || 0
     }));
 
+    // DEBUG: DOM'dan okunan nöbetçi id ve kredi değerlerini konsola yazdır
+    console.log('Kredi sıfırlama için işlenecek nöbetçiler:', nobetciler);
+
     if (nobetciler.length === 0) {
         console.log("İşlenecek geçerli nöbetçi verisi bulunamadı.");
         return true;
