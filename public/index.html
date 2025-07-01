@@ -148,22 +148,7 @@
 </head>
 <body>
     <header>
-        <div class="container">
-            <h1 style="text-align: center; margin-bottom: 0.5em;">Nöbetçi Yönetim Sistemi</h1>
-            <div style="text-align: center; margin-bottom: 2em;">
-                <a href="#" class="kredi-kurallari-link">Kredi Kuralları</a>
-            </div>
-            <nav>
-                <ul>
-                    <li><a href="#nobetciListesiBolumu">Nöbetçi Listesi</a></li>
-                    <li><a href="#nobetciEkleBolumu">Nöbetçi Ekle</a></li>
-                    <li><a href="#krediKurallariBolumu">Kredi Kuralları</a></li>
-                    <li><a href="#zamanKrediBolumu">Zaman Bazlı Kredi</a></li>
-                    <li><a href="#takvimBolumu">Nöbet Takvimi</a></li>
-                </ul>
-            </nav>
-            <button id="logoutBtn">Çıkış Yap</button>
-        </div>
+        <h1 style="text-align: center; margin-bottom: 0.5em;">Nöbetçi Yönetim Sistemi</h1>
     </header>
 
     <main class="container">
@@ -197,24 +182,24 @@
             <div class="yeni-nobetci-form" style="max-width: 900px; margin: 0 auto;">
                 <h2 style="text-align: center; margin-bottom: 24px;">Yeni Nöbetçi Ekle</h2>
                 <form id="nobetciEkleForm">
-                    <div style="display: flex; gap: 16px; margin-bottom: 16px; justify-content: space-between;">
-                        <div style="flex: 1; max-width: 48%;">
+                    <div style="display: flex; margin-bottom: 16px; justify-content: space-between; align-items: flex-end;">
+                        <div style="width: 48%; display: flex; flex-direction: column; align-items: flex-start;">
                             <label for="name">İsim:</label>
-                            <input type="text" id="name" name="name" class="form-control" placeholder="İsim" required>
+                            <input type="text" id="name" name="name" class="form-control" placeholder="İsim" required style="width: 100%;">
                         </div>
-                        <div style="flex: 1; max-width: 48%;">
+                        <div style="width: 48%; display: flex; flex-direction: column; align-items: flex-end;">
                             <label for="password">Şifre:</label>
-                            <input type="password" id="password" name="password" class="form-control" placeholder="Şifre" required>
+                            <input type="password" id="password" name="password" class="form-control" placeholder="Şifre" required style="width: 100%;">
                         </div>
                     </div>
-                    <div style="display: flex; gap: 16px; margin-bottom: 16px; justify-content: space-between;">
-                        <div style="flex: 1; max-width: 48%;">
+                    <div style="display: flex; margin-bottom: 16px; justify-content: space-between; align-items: flex-end;">
+                        <div style="width: 48%; display: flex; flex-direction: column; align-items: flex-start;">
                             <label for="telegram_id">Telegram Chat ID:</label>
-                            <input type="text" id="telegram_id" name="telegram_id" class="form-control" placeholder="Telegram Chat ID (isteğe bağlı)">
+                            <input type="text" id="telegram_id" name="telegram_id" class="form-control" placeholder="Telegram Chat ID (isteğe bağlı)" style="width: 100%;">
                         </div>
-                        <div style="flex: 1; max-width: 48%;">
+                        <div style="width: 48%; display: flex; flex-direction: column; align-items: flex-end;">
                             <label for="telefon_no">Telefon Numarası:</label>
-                            <input type="text" id="telefon_no" name="telefon_no" class="form-control" placeholder="Telefon Numarası (isteğe bağlı)">
+                            <input type="text" id="telefon_no" name="telefon_no" class="form-control" placeholder="Telefon Numarası (isteğe bağlı)" style="width: 100%;">
                         </div>
                     </div>
                     <button type="submit" class="btn btn-success" style="margin-left: 0;">Ekle</button>
