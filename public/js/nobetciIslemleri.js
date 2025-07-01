@@ -109,7 +109,7 @@ async function getNobetciler() {
                         <td>${telegramId}</td>
                         <td>${telefonNo}</td>
                         <td>${kazanilanKredi}</td>
-                        <td>${payEdilenKredi}</td>
+                        <td class="pay-edilen-kredi">${payEdilenKredi}</td>
                         <td>${kalanKredi}</td>
                         <td>
                             <button class="btn btn-info btn-sm" data-action="edit-telegram" title="Telegram ID Düzenle"><i class="fa fa-telegram"></i></button>
