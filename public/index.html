@@ -173,26 +173,32 @@
         </section>
 
         <section id="nobetciEkleBolumu">
-            <h2>Yeni Nöbetçi Ekle</h2>
-            <form id="nobetciEkleForm">
-                <div class="form-group">
-                    <label for="name">İsim:</label>
-                    <input type="text" id="name" name="name" class="form-control" placeholder="İsim" required />
-                </div>
-                <div class="form-group">
-                    <label for="password">Şifre:</label>
-                    <input type="text" id="password" name="password" class="form-control" placeholder="Şifre" required />
-                </div>
-                <div class="form-group">
-                    <label for="telegram_id">Telegram Chat ID:</label>
-                    <input type="text" id="telegram_id" name="telegram_id" class="form-control" placeholder="Telegram Chat ID (isteğe bağlı)" />
-                </div>
-                <div class="form-group">
-                    <label for="telefon_no_form">Telefon Numarası:</label>
-                    <input type="text" id="telefon_no_form" name="telefon_no_form" class="form-control" placeholder="Telefon Numarası (isteğe bağlı)" />
-                </div>
-                <button type="submit" class="btn btn-primary">Ekle</button>
-            </form>
+            <div class="yeni-nobetci-form" style="max-width: 900px; margin: 0 auto;">
+                <h2 style="text-align: center; margin-bottom: 24px;">Yeni Nöbetçi Ekle</h2>
+                <form id="nobetciEkleForm">
+                    <div style="display: flex; gap: 16px; margin-bottom: 16px;">
+                        <div style="flex: 1;">
+                            <label for="name">İsim:</label>
+                            <input type="text" id="name" name="name" class="form-control" placeholder="İsim" required>
+                        </div>
+                        <div style="flex: 1;">
+                            <label for="password">Şifre:</label>
+                            <input type="password" id="password" name="password" class="form-control" placeholder="Şifre" required>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 16px; margin-bottom: 16px;">
+                        <div style="flex: 1;">
+                            <label for="telegram_id">Telegram Chat ID:</label>
+                            <input type="text" id="telegram_id" name="telegram_id" class="form-control" placeholder="Telegram Chat ID (isteğe bağlı)">
+                        </div>
+                        <div style="flex: 1;">
+                            <label for="telefon_no">Telefon Numarası:</label>
+                            <input type="text" id="telefon_no" name="telefon_no" class="form-control" placeholder="Telefon Numarası (isteğe bağlı)">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-success">Ekle</button>
+                </form>
+            </div>
         </section>
 
         <section id="krediKurallariBolumu">
