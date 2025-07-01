@@ -143,12 +143,31 @@
             text-decoration: underline;
             background: #bbdefb;
         }
+        header nav ul li a:hover {
+            background: #444;
+            color: #fff;
+        }
+        #logoutBtn:hover {
+            background: #b71c1c;
+        }
     </style>
 
 </head>
 <body>
-    <header>
-        <h1 style="text-align: center; margin-bottom: 0.5em;">Nöbetçi Yönetim Sistemi</h1>
+    <header style="background: #333; color: #fff; padding: 0; margin-bottom: 0;">
+        <div class="container" style="display: flex; align-items: center; justify-content: space-between; min-height: 60px;">
+            <h1 style="margin: 0; font-size: 1.5em; font-weight: bold; letter-spacing: 1px;">Nöbetçi Yönetim Sistemi</h1>
+            <nav style="flex: 1; margin-left: 40px;">
+                <ul style="display: flex; gap: 24px; list-style: none; margin: 0; padding: 0; align-items: center;">
+                    <li><a href="#nobetciListesiBolumu" style="color: #fff; text-decoration: none; font-weight: 500; padding: 8px 12px; border-radius: 4px; transition: background 0.2s;">Nöbetçi Listesi</a></li>
+                    <li><a href="#nobetciEkleBolumu" style="color: #fff; text-decoration: none; font-weight: 500; padding: 8px 12px; border-radius: 4px; transition: background 0.2s;">Nöbetçi Ekle</a></li>
+                    <li><a href="#krediKurallariBolumu" style="color: #fff; text-decoration: none; font-weight: 500; padding: 8px 12px; border-radius: 4px; transition: background 0.2s;">Kredi Kuralları</a></li>
+                    <li><a href="#zamanKrediBolumu" style="color: #fff; text-decoration: none; font-weight: 500; padding: 8px 12px; border-radius: 4px; transition: background 0.2s;">Zaman Bazlı Kredi</a></li>
+                    <li><a href="#takvimBolumu" style="color: #fff; text-decoration: none; font-weight: 500; padding: 8px 12px; border-radius: 4px; transition: background 0.2s;">Nöbet Takvimi</a></li>
+                </ul>
+            </nav>
+            <button id="logoutBtn" style="background: #e53935; color: #fff; border: none; border-radius: 4px; padding: 8px 18px; font-weight: bold; font-size: 1em; cursor: pointer; transition: background 0.2s;">Çıkış Yap</button>
+        </div>
     </header>
 
     <main class="container">
