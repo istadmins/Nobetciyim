@@ -70,35 +70,41 @@ async function kurallariYukle() {
     const haftaSonuRow = tbody.insertRow();
     haftaSonuRow.setAttribute('data-sabit', 'true');
     haftaSonuRow.innerHTML = `
-        <td>
-            <span id="haftaSonuKrediSpan">${haftaSonuKrediValue}</span>
-            <button type="button" class="btn btn-link btn-sm" id="haftaSonuEditBtn" title="Düzenle"><i class="fa fa-pencil"></i></button>
-        </td>
+        <td><span id="haftaSonuKrediSpan">${haftaSonuKrediValue}</span></td>
         <td>Hafta Sonu</td>
-        <td></td> <td></td>
+        <td></td>
+        <td><button type="button" class="btn btn-link btn-sm" id="haftaSonuEditBtn" title="Düzenle"><i class="fa fa-pencil"></i></button></td>
     `;
     document.getElementById('haftaSonuEditBtn').onclick = function() {
+        const tdIslem = document.getElementById('haftaSonuEditBtn').closest('td');
         const span = document.getElementById('haftaSonuKrediSpan');
         const currentValue = span.textContent;
+        // Butonu gizle
+        document.getElementById('haftaSonuEditBtn').style.display = 'none';
+        // Input oluştur
         const input = document.createElement('input');
         input.type = 'number';
         input.value = currentValue;
         input.style.width = '60px';
-        input.onblur = input.onkeydown = function(e) {
-            if (e.type === 'blur' || (e.type === 'keydown' && e.key === 'Enter')) {
-                const yeniKredi = input.value;
-                if (yeniKredi !== '' && !isNaN(parseInt(yeniKredi)) && parseInt(yeniKredi) >= 0) {
-                    fetch('/api/kurallar', {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') },
-                        body: JSON.stringify({ kural_adi: 'Hafta Sonu', kredi: parseInt(yeniKredi) })
-                    }).then(r => r.json()).then(() => kurallariYukle());
-                } else {
-                    kurallariYukle();
-                }
+        input.className = 'form-control';
+        input.onkeydown = function(e) {
+            if (e.key === 'Enter') {
+                input.blur();
             }
         };
-        span.replaceWith(input);
+        input.onblur = function() {
+            const yeniKredi = input.value;
+            if (yeniKredi !== '' && !isNaN(parseInt(yeniKredi)) && parseInt(yeniKredi) >= 0) {
+                fetch('/api/kurallar', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+                    body: JSON.stringify({ kural_adi: 'Hafta Sonu', kredi: parseInt(yeniKredi) })
+                }).then(r => r.json()).then(() => kurallariYukle());
+            } else {
+                kurallariYukle();
+            }
+        };
+        tdIslem.appendChild(input);
         input.focus();
     };
     
