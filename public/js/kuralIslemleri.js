@@ -125,7 +125,7 @@ async function kurallariYukle() {
               <td>${new Date(tekKural.tarih).toLocaleDateString('tr-TR')}</td> 
               <td>
                 <button class="btn btn-link btn-sm editKrediBtn" title="Düzenle"><i class="fa fa-pencil"></i></button>
-                <button class="btn btn-danger btn-sm" onclick="kuralSil(${tekKural.id})">
+                <button class="btn btn-danger btn-sm deleteKuralBtn" data-id="${tekKural.id}">
                   <i class="fa fa-trash"></i>
                 </button>
               </td>
@@ -167,6 +167,13 @@ async function kurallariYukle() {
                 tdIslem.appendChild(input);
                 input.focus();
             };
+        });
+        // Silme butonlarına event ekle (CSP uyumlu)
+        tbody.querySelectorAll('.deleteKuralBtn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const id = btn.getAttribute('data-id');
+                kuralSil(id);
+            });
         });
     }
   } catch (error) {
