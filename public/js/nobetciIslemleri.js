@@ -224,7 +224,6 @@ async function handleNobetciEkle(e) {
         });
         const responseData = await response.json();
         if (!response.ok) throw new Error(responseData.error);
-        alert(`${data.name} başarıyla eklendi.`);
         e.target.reset();
         await getNobetciler();
         if (typeof hesaplaToplamKrediVeDagit === 'function') await hesaplaToplamKrediVeDagit();
