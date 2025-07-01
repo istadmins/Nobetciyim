@@ -114,13 +114,11 @@ async function kurallariYukle() {
             const tr = tbody.insertRow(); 
             tr.dataset.id = tekKural.id; 
             tr.innerHTML = `
-              <td>
-                <span class="krediSpan">${tekKural.kredi}</span>
-                <button type="button" class="btn btn-link btn-sm editKrediBtn" title="Düzenle"><i class="fa fa-pencil"></i></button>
-              </td>
+              <td><span class="krediSpan">${tekKural.kredi}</span></td>
               <td>${tekKural.kural_adi}</td> 
               <td>${new Date(tekKural.tarih).toLocaleDateString('tr-TR')}</td> 
               <td>
+                <button class="btn btn-link btn-sm editKrediBtn" title="Düzenle"><i class="fa fa-pencil"></i></button>
                 <button class="btn btn-danger btn-sm" onclick="kuralSil(${tekKural.id})">
                   <i class="fa fa-trash"></i>
                 </button>
@@ -130,30 +128,37 @@ async function kurallariYukle() {
         // Tüm edit butonlarına event ekle
         tbody.querySelectorAll('.editKrediBtn').forEach(btn => {
             btn.onclick = function() {
-                const td = btn.closest('td');
-                const span = td.querySelector('.krediSpan');
-                const currentValue = span.textContent;
                 const tr = btn.closest('tr');
+                const tdIslem = btn.closest('td');
+                const span = tr.querySelector('.krediSpan');
+                const currentValue = span.textContent;
                 const kuralId = tr.dataset.id;
+                // Eski butonları gizle
+                tdIslem.querySelectorAll('button').forEach(b => b.style.display = 'none');
+                // Input oluştur
                 const input = document.createElement('input');
                 input.type = 'number';
                 input.value = currentValue;
                 input.style.width = '60px';
-                input.onblur = input.onkeydown = function(e) {
-                    if (e.type === 'blur' || (e.type === 'keydown' && e.key === 'Enter')) {
-                        const yeniKredi = input.value;
-                        if (yeniKredi !== '' && !isNaN(parseInt(yeniKredi)) && parseInt(yeniKredi) >= 0) {
-                            fetch('/api/kurallar', {
-                                method: 'PUT',
-                                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') },
-                                body: JSON.stringify({ id: kuralId, kredi: parseInt(yeniKredi) })
-                            }).then(r => r.json()).then(() => kurallariYukle());
-                        } else {
-                            kurallariYukle();
-                        }
+                input.className = 'form-control';
+                input.onkeydown = function(e) {
+                    if (e.key === 'Enter') {
+                        input.blur();
                     }
                 };
-                span.replaceWith(input);
+                input.onblur = function() {
+                    const yeniKredi = input.value;
+                    if (yeniKredi !== '' && !isNaN(parseInt(yeniKredi)) && parseInt(yeniKredi) >= 0) {
+                        fetch('/api/kurallar', {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+                            body: JSON.stringify({ id: kuralId, kredi: parseInt(yeniKredi) })
+                        }).then(r => r.json()).then(() => kurallariYukle());
+                    } else {
+                        kurallariYukle();
+                    }
+                };
+                tdIslem.appendChild(input);
                 input.focus();
             };
         });

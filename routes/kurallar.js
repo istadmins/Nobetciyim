@@ -23,8 +23,6 @@ router.post('/', (req, res) => {
   );
 });
 
-
-
 // Kural sil (sabit kurallar hariç)
 router.delete('/:id', (req, res) => {
   db.get('SELECT sabit_kural FROM kredi_kurallari WHERE id = ?', [req.params.id], (err, row) => {
@@ -38,15 +36,28 @@ router.delete('/:id', (req, res) => {
 
 // PUT /api/kurallar
 router.put('/', (req, res) => {
-  const { kural_adi, kredi } = req.body;
-  db.run(
-    'UPDATE kredi_kurallari SET kredi = ? WHERE kural_adi = ?',
-    [kredi, kural_adi],
-    function(err) {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ message: 'Kural güncellendi' });
-    }
-  );
+  const { id, kural_adi, kredi } = req.body;
+  if (id) {
+    db.run(
+      'UPDATE kredi_kurallari SET kredi = ? WHERE id = ?',
+      [kredi, id],
+      function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'Kural güncellendi' });
+      }
+    );
+  } else if (kural_adi) {
+    db.run(
+      'UPDATE kredi_kurallari SET kredi = ? WHERE kural_adi = ?',
+      [kredi, kural_adi],
+      function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'Kural güncellendi' });
+      }
+    );
+  } else {
+    res.status(400).json({ error: 'Güncelleme için id veya kural_adi gerekli' });
+  }
 });
 
 module.exports = router;
