@@ -148,7 +148,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     showIzinForm(nobetciList);
   };
 
-  document.addEventListener('DOMContentLoaded', loadIzinler);
+  await loadIzinler();
 });
 
 async function loadInitialDataAndSetupInterval() {
