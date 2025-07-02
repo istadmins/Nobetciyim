@@ -51,6 +51,103 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
   }
+
+  // Nöbetçi İzinleri UI ve API entegrasyonu
+  async function fetchNobetciList() {
+    const res = await fetch('/api/nobetci/list');
+    return res.ok ? await res.json() : [];
+  }
+
+  async function fetchIzinler() {
+    const res = await fetch('/api/nobetci/izinler');
+    return res.ok ? await res.json() : [];
+  }
+
+  function renderIzinlerTable(izinler) {
+    const tbody = document.querySelector('#izinlerTablosu tbody');
+    tbody.innerHTML = '';
+    izinler.forEach(izin => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${izin.nobetci_adi || ''}</td>
+        <td>${izin.baslangic_tarihi}</td>
+        <td>${izin.bitis_tarihi}</td>
+        <td>${izin.gunduz_yedek_adi || ''}</td>
+        <td>${izin.gece_yedek_adi || ''}</td>
+        <td><button class="btn btn-danger btn-sm deleteIzinBtn" data-id="${izin.id}"><i class="fa fa-trash"></i></button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+    // Silme butonları
+    tbody.querySelectorAll('.deleteIzinBtn').forEach(btn => {
+      btn.addEventListener('click', async function() {
+        if (confirm('Bu izni silmek istediğinize emin misiniz?')) {
+          await fetch(`/api/nobetci/izinler/${btn.dataset.id}`, { method: 'DELETE' });
+          loadIzinler();
+        }
+      });
+    });
+  }
+
+  async function loadIzinler() {
+    const izinler = await fetchIzinler();
+    renderIzinlerTable(izinler);
+  }
+
+  function showIzinForm(nobetciList) {
+    const formDiv = document.getElementById('izinFormu');
+    formDiv.innerHTML = `
+      <form id="izinEkleForm">
+        <label>Nöbetçi:
+          <select name="nobetci_id" required>
+            <option value="">Seçiniz</option>
+            ${nobetciList.map(n => `<option value="${n.id}">${n.name}</option>`).join('')}
+          </select>
+        </label>
+        <label>Başlangıç Tarihi:
+          <input type="date" name="baslangic_tarihi" required>
+        </label>
+        <label>Bitiş Tarihi:
+          <input type="date" name="bitis_tarihi" required>
+        </label>
+        <label>Gündüz Yedek:
+          <select name="gunduz_yedek_id">
+            <option value="">Seçiniz</option>
+            ${nobetciList.map(n => `<option value="${n.id}">${n.name}</option>`).join('')}
+          </select>
+        </label>
+        <label>Gece Yedek:
+          <select name="gece_yedek_id">
+            <option value="">Seçiniz</option>
+            ${nobetciList.map(n => `<option value="${n.id}">${n.name}</option>`).join('')}
+          </select>
+        </label>
+        <button type="submit" class="btn btn-success">Kaydet</button>
+        <button type="button" id="izinFormKapatBtn" class="btn btn-secondary">İptal</button>
+      </form>
+    `;
+    formDiv.style.display = '';
+    document.getElementById('izinFormKapatBtn').onclick = () => { formDiv.style.display = 'none'; };
+    document.getElementById('izinEkleForm').onsubmit = async function(e) {
+      e.preventDefault();
+      const formData = new FormData(this);
+      const data = Object.fromEntries(formData.entries());
+      await fetch('/api/nobetci/izinler', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      formDiv.style.display = 'none';
+      loadIzinler();
+    };
+  }
+
+  document.getElementById('izinEkleBtn').onclick = async function() {
+    const nobetciList = await fetchNobetciList();
+    showIzinForm(nobetciList);
+  };
+
+  document.addEventListener('DOMContentLoaded', loadIzinler);
 });
 
 async function loadInitialDataAndSetupInterval() {

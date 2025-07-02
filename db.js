@@ -68,6 +68,18 @@ function initializeSchema() {
             bitis_saat TEXT NOT NULL,
             vardiya_adi TEXT
         );
+
+        CREATE TABLE IF NOT EXISTS nobetci_izinleri (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nobetci_id INTEGER NOT NULL,
+            baslangic_tarihi TEXT NOT NULL,
+            bitis_tarihi TEXT NOT NULL,
+            gunduz_yedek_id INTEGER,
+            gece_yedek_id INTEGER,
+            FOREIGN KEY (nobetci_id) REFERENCES Nobetciler(id),
+            FOREIGN KEY (gunduz_yedek_id) REFERENCES Nobetciler(id),
+            FOREIGN KEY (gece_yedek_id) REFERENCES Nobetciler(id)
+        );
     `;
 
     db.exec(createTablesSql, (err) => {

@@ -302,6 +302,41 @@ router.put('/pay-edilen-kredileri-guncelle', (req, res) => {
     });
 });
 
+// Nöbetçi izinleri API
+
+// Tüm izinleri listele
+router.get('/izinler', (req, res) => {
+  db.all(`SELECT i.*, n1.name as nobetci_adi, n2.name as gunduz_yedek_adi, n3.name as gece_yedek_adi
+          FROM nobetci_izinleri i
+          LEFT JOIN Nobetciler n1 ON i.nobetci_id = n1.id
+          LEFT JOIN Nobetciler n2 ON i.gunduz_yedek_id = n2.id
+          LEFT JOIN Nobetciler n3 ON i.gece_yedek_id = n3.id
+          ORDER BY i.baslangic_tarihi DESC`, [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+// Yeni izin ekle
+router.post('/izinler', (req, res) => {
+  const { nobetci_id, baslangic_tarihi, bitis_tarihi, gunduz_yedek_id, gece_yedek_id } = req.body;
+  db.run(`INSERT INTO nobetci_izinleri (nobetci_id, baslangic_tarihi, bitis_tarihi, gunduz_yedek_id, gece_yedek_id)
+          VALUES (?, ?, ?, ?, ?)`,
+    [nobetci_id, baslangic_tarihi, bitis_tarihi, gunduz_yedek_id, gece_yedek_id],
+    function(err) {
+      if (err) return res.status(400).json({ error: err.message });
+      res.json({ id: this.lastID });
+    });
+});
+
+// İzin sil
+router.delete('/izinler/:id', (req, res) => {
+  db.run('DELETE FROM nobetci_izinleri WHERE id = ?', [req.params.id], function(err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'İzin silindi' });
+  });
+});
+
 module.exports = router;
 
 
