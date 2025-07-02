@@ -411,7 +411,8 @@ botInstance.onText(/^\/gelecek_hafta_nobetci$/, async (msg) => {
 
     // Callback query handler
     botInstance.on('callback_query', async (callbackQuery) => {
-        const [action, requestId] = callbackQuery.data.split('_');
+        const [action, ...requestIdParts] = callbackQuery.data.split('_');
+        const requestId = requestIdParts.join('_');
         // LOG EKLEME: Callback geldiğinde detaylı logla
         console.log('[DEVIR CALLBACK] requestId:', requestId);
         console.log('[DEVIR CALLBACK] pendingTransferRequests keys:', Object.keys(pendingTransferRequests));
