@@ -337,6 +337,14 @@ router.delete('/izinler/:id', (req, res) => {
   });
 });
 
+// Nöbetçi listesini döndür (id, name)
+router.get('/list', (req, res) => {
+  db.all('SELECT id, name FROM Nobetciler ORDER BY name ASC', [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
 module.exports = router;
 
 

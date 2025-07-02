@@ -97,48 +97,48 @@ document.addEventListener('DOMContentLoaded', async () => {
   function showIzinForm(nobetciList) {
     const formDiv = document.getElementById('izinFormu');
     formDiv.innerHTML = `
-      <form id="izinEkleForm">
-        <label>Nöbetçi:
-          <select name="nobetci_id" required>
-            <option value="">Seçiniz</option>
-            ${nobetciList.map(n => `<option value="${n.id}">${n.name}</option>`).join('')}
-          </select>
-        </label>
-        <label>Başlangıç Tarihi:
-          <input type="date" name="baslangic_tarihi" required>
-        </label>
-        <label>Bitiş Tarihi:
-          <input type="date" name="bitis_tarihi" required>
-        </label>
-        <label>Gündüz Yedek:
-          <select name="gunduz_yedek_id">
-            <option value="">Seçiniz</option>
-            ${nobetciList.map(n => `<option value="${n.id}">${n.name}</option>`).join('')}
-          </select>
-        </label>
-        <label>Gece Yedek:
-          <select name="gece_yedek_id">
-            <option value="">Seçiniz</option>
-            ${nobetciList.map(n => `<option value="${n.id}">${n.name}</option>`).join('')}
-          </select>
-        </label>
-        <button type="submit" class="btn btn-success">Kaydet</button>
-        <button type="button" id="izinFormKapatBtn" class="btn btn-secondary">İptal</button>
-      </form>
+        <form id="izinEkleForm">
+            <label>Nöbetçi:
+                <select name="nobetci_id" required>
+                    <option value="">Seçiniz</option>
+                    ${nobetciList.map(n => `<option value="${n.id}">${n.name}</option>`).join('')}
+                </select>
+            </label>
+            <label>Başlangıç Tarihi:
+                <input type="datetime-local" name="baslangic_tarihi" required>
+            </label>
+            <label>Bitiş Tarihi:
+                <input type="datetime-local" name="bitis_tarihi" required>
+            </label>
+            <label>Gündüz Yedek:
+                <select name="gunduz_yedek_id">
+                    <option value="">Seçiniz</option>
+                    ${nobetciList.map(n => `<option value="${n.id}">${n.name}</option>`).join('')}
+                </select>
+            </label>
+            <label>Gece Yedek:
+                <select name="gece_yedek_id">
+                    <option value="">Seçiniz</option>
+                    ${nobetciList.map(n => `<option value="${n.id}">${n.name}</option>`).join('')}
+                </select>
+            </label>
+            <button type="submit" class="btn btn-success">Kaydet</button>
+            <button type="button" id="izinFormKapatBtn" class="btn btn-secondary">İptal</button>
+        </form>
     `;
     formDiv.style.display = '';
     document.getElementById('izinFormKapatBtn').onclick = () => { formDiv.style.display = 'none'; };
     document.getElementById('izinEkleForm').onsubmit = async function(e) {
-      e.preventDefault();
-      const formData = new FormData(this);
-      const data = Object.fromEntries(formData.entries());
-      await fetch('/api/nobetci/izinler', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-      formDiv.style.display = 'none';
-      loadIzinler();
+        e.preventDefault();
+        const formData = new FormData(this);
+        const data = Object.fromEntries(formData.entries());
+        await fetch('/api/nobetci/izinler', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        formDiv.style.display = 'none';
+        loadIzinler();
     };
   }
 
