@@ -143,6 +143,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   document.getElementById('izinEkleBtn').onclick = async function() {
+    // Her tıklamada güncel nöbetçi listesini çek
     const nobetciList = await fetchNobetciList();
     showIzinForm(nobetciList);
   };
