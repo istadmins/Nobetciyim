@@ -65,7 +65,8 @@ function initializeSchema() {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             kredi_dakika INTEGER NOT NULL,
             baslangic_saat TEXT NOT NULL,
-            bitis_saat TEXT NOT NULL
+            bitis_saat TEXT NOT NULL,
+            vardiya_adi TEXT
         );
     `;
 

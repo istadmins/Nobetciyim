@@ -82,15 +82,21 @@ function addNewTimeRow() {
     }
 
     const newRow = tbody.insertRow(-1);
+    const vardiyaAdlari = ['Birinci', 'İkinci', 'Üçüncü'];
+    const currentIndex = currentDataRows.length;
     newRow.innerHTML = `
+    <td class="vardiya-adi">${vardiyaAdlari[currentIndex] || ''}</td>
     <td><input type="number" class="kredi-dakika-input form-control" min="0" value="1"></td>
     <td>
         <input type="time" class="baslangic-saat form-control" value="${defaultStartTime}">
         -
         <input type="time" class="bitis-saat form-control" value="${defaultEndTime}">
     </td>
-    <td><button type="button" class="btn btn-danger btn-sm" onclick="removeTimeRow(this.parentNode.parentNode)"><i class="fa fa-trash"></i></button></td>
+    <td><button type="button" class="btn btn-danger btn-sm deleteTimeRowBtn"><i class="fa fa-trash"></i></button></td>
   `;
+    newRow.querySelector('.deleteTimeRowBtn').addEventListener('click', function() {
+        removeTimeRow(newRow);
+    });
     updateTimeRowControls();
 }
 
@@ -144,9 +150,11 @@ async function zamanKrediTablosunuDoldur() {
     if (veriler && veriler.length === 0) {
       tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Tanımlı zaman aralığı bulunmamaktadır. Ekleyebilirsiniz.</td></tr>';
     } else if (veriler) {
-      veriler.forEach((satir) => {
+      const vardiyaAdlari = ['Birinci', 'İkinci', 'Üçüncü'];
+      veriler.forEach((satir, index) => {
         const tr = tbody.insertRow();
         tr.innerHTML = `
+          <td class="vardiya-adi">${vardiyaAdlari[index] || ''}</td>
           <td><input type="number" class="kredi-dakika-input form-control" min="0" value="${satir.kredi_dakika}"></td>
           <td>
             <input type="time" class="baslangic-saat form-control" value="${satir.baslangic_saat}">
@@ -154,10 +162,12 @@ async function zamanKrediTablosunuDoldur() {
             <input type="time" class="bitis-saat form-control" value="${satir.bitis_saat}">
           </td>
           <td>
-            <button type="button" class="btn btn-danger btn-sm" onclick="removeTimeRow(this.parentNode.parentNode)"><i class="fa fa-trash"></i></button>
+            <button type="button" class="btn btn-danger btn-sm deleteTimeRowBtn"><i class="fa fa-trash"></i></button>
           </td>
-        </tr>
         `;
+        tr.querySelector('.deleteTimeRowBtn').addEventListener('click', function() {
+            removeTimeRow(tr);
+        });
       });
     }
     updateTimeRowControls(); // Tablo dolduktan sonra kontrolleri güncelle
