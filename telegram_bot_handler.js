@@ -376,6 +376,11 @@ botInstance.onText(/^\/gelecek_hafta_nobetci$/, async (msg) => {
         // Web takvimindeki algoritma ile aynı hesaplama
         const gelecekHaftaBasi = new Date(today.getFullYear(), today.getMonth(), today.getDate() - today.getDay() + 1 + 7);
         console.log(`[DEBUG] Gelecek hafta başı (web algoritması): ${gelecekHaftaBasi.toISOString()}`);
+        
+        // Dosyaya da log yazalım
+        const fs = require('fs');
+        const logMessage = `[${new Date().toISOString()}] DEBUG: Bugün: ${today.toISOString()}, Gün: ${today.getDay()}, Gelecek hafta: ${gelecekHaftaBasi.toISOString()}\n`;
+        fs.appendFileSync('telegram_debug.log', logMessage);
 
         const gelecekHaftaNobetci = await getAsilHaftalikNobetci(gelecekHaftaBasi);
         const buHaftaNobetci = await getAsilHaftalikNobetci(today);
@@ -392,6 +397,10 @@ botInstance.onText(/^\/gelecek_hafta_nobetci$/, async (msg) => {
 
         console.log(`[DEBUG] Bu hafta: ${buHaftaNo}. hafta, Gelecek hafta: ${gelecekHaftaNo}. hafta`);
         console.log(`[DEBUG] Bu hafta nöbetçi: ${buHaftaNobetci?.name}, Gelecek hafta nöbetçi: ${gelecekHaftaNobetci?.name}`);
+        
+        // Dosyaya da log yazalım
+        const logMessage2 = `[${new Date().toISOString()}] DEBUG: Bu hafta: ${buHaftaNo}. hafta, Gelecek hafta: ${gelecekHaftaNo}. hafta, Bu hafta nöbetçi: ${buHaftaNobetci?.name}, Gelecek hafta nöbetçi: ${gelecekHaftaNobetci?.name}\n`;
+        fs.appendFileSync('telegram_debug.log', logMessage2);
 
         let message = `📅 Haftalık Nöbetçi Bilgileri
 
