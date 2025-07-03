@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <link rel="stylesheet" href="style.css">
+    <!-- Tabler CSS modern görünüm için eklendi -->
+    <link href="https://unpkg.com/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet"/>
 
     <title>Nöbetçi Sistemi</title>
     <style>
@@ -174,75 +176,80 @@
     </style>
 
 </head>
-<body>
+<body class="bg-light">
     <header>
-        <div class="container green-bg-header">
+        <div class="container green-bg-header mb-4">
             <h1 style="margin: 0; font-size: 1.5em; font-weight: bold; letter-spacing: 1px; color: #fff;">Nöbetçi Yönetim Sistemi</h1>
-            <nav>
-                <ul>
-                    <li><a href="#nobetciListesiBolumu">Nöbetçi Listesi</a></li>
-                    <li><a href="#nobetciEkleBolumu">Nöbetçi Ekle</a></li>
-                    <li><a href="#krediKurallariBolumu">Kredi Kuralları</a></li>
-                    <li><a href="#zamanKrediBolumu">Zaman Bazlı Kredi</a></li>
-                    <li><a href="#takvimBolumu">Nöbet Takvimi</a></li>
+            <nav class="mt-2">
+                <ul class="nav nav-pills justify-content-center">
+                    <li class="nav-item"><a class="nav-link" href="#nobetciListesiBolumu">Nöbetçi Listesi</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#nobetciEkleBolumu">Nöbetçi Ekle</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#krediKurallariBolumu">Kredi Kuralları</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#zamanKrediBolumu">Zaman Bazlı Kredi</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#takvimBolumu">Nöbet Takvimi</a></li>
                 </ul>
             </nav>
-            <button id="logoutBtn">Çıkış Yap</button>
+            <button id="logoutBtn" class="btn btn-danger float-end mt-2">Çıkış Yap</button>
         </div>
     </header>
 
-    <main class="container">
+    <main class="container-xl">
         <section id="nobetciListesiBolumu">
-            <div class="green-bg-section">Nöbetçi Listesi</div>
-            <div style="text-align: center; margin-bottom: 15px;">
-                <button id="baslatKrediDagitimiBtn" class="btn btn-success" style="margin-right: 10px;">Başlat</button>
-            </div>
-            <div class="table-responsive">
-                <table id="nobetciTable">
-                    <thead>
-                        <tr>
-                            <th scope="col">Seç</th>
-                            <th scope="col">İsim</th>
-                            <th scope="col">Telegram ID</th>
-                            <th scope="col">Telefon No</th>
-                            <th scope="col">Kazanılan Kredi</th>
-                            <th scope="col">Pay Edilen Kredi</th>
-                            <th scope="col">Kalan Kredi</th>
-                            <th scope="col">İşlemler</th>
-                        </tr>
-                    </thead>
-                    <tbody id="nobetciTableBody">
-                        </tbody>
-                </table>
+            <div class="card mb-4">
+                <div class="card-header green-bg-section">Nöbetçi Listesi</div>
+                <div class="card-body">
+                    <div class="mb-3 text-center">
+                        <button id="baslatKrediDagitimiBtn" class="btn btn-success me-2">Başlat</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table id="nobetciTable" class="table table-striped table-bordered">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Seç</th>
+                                    <th scope="col">İsim</th>
+                                    <th scope="col">Telegram ID</th>
+                                    <th scope="col">Telefon No</th>
+                                    <th scope="col">Kazanılan Kredi</th>
+                                    <th scope="col">Pay Edilen Kredi</th>
+                                    <th scope="col">Kalan Kredi</th>
+                                    <th scope="col">İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody id="nobetciTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </section>
 
         <section id="nobetciEkleBolumu">
-            <div class="yeni-nobetci-form" style="max-width: 900px; margin: 0 auto;">
-                <h2 style="text-align: center; margin-bottom: 24px;">Yeni Nöbetçi Ekle</h2>
-                <form id="nobetciEkleForm">
-                    <div style="display: flex; margin-bottom: 16px; justify-content: space-between; align-items: flex-end;">
-                        <div style="width: 48%; display: flex; flex-direction: column; align-items: flex-start;">
-                            <label for="name">İsim:</label>
-                            <input type="text" id="name" name="name" class="form-control" placeholder="İsim" required style="width: 100%;">
+            <div class="card mb-4">
+                <div class="card-header"><h2 class="card-title mb-0">Yeni Nöbetçi Ekle</h2></div>
+                <div class="card-body">
+                    <form id="nobetciEkleForm">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="name" class="form-label">İsim:</label>
+                                <input type="text" id="name" name="name" class="form-control" placeholder="İsim" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="password" class="form-label">Şifre:</label>
+                                <input type="password" id="password" name="password" class="form-control" placeholder="Şifre" required>
+                            </div>
                         </div>
-                        <div style="width: 48%; display: flex; flex-direction: column; align-items: flex-end;">
-                            <label for="password">Şifre:</label>
-                            <input type="password" id="password" name="password" class="form-control" placeholder="Şifre" required style="width: 100%;">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="telegram_id" class="form-label">Telegram Chat ID:</label>
+                                <input type="text" id="telegram_id" name="telegram_id" class="form-control" placeholder="Telegram Chat ID (isteğe bağlı)">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="telefon_no" class="form-label">Telefon Numarası:</label>
+                                <input type="text" id="telefon_no" name="telefon_no" class="form-control" placeholder="Telefon Numarası (isteğe bağlı)">
+                            </div>
                         </div>
-                    </div>
-                    <div style="display: flex; margin-bottom: 16px; justify-content: space-between; align-items: flex-end;">
-                        <div style="width: 48%; display: flex; flex-direction: column; align-items: flex-start;">
-                            <label for="telegram_id">Telegram Chat ID:</label>
-                            <input type="text" id="telegram_id" name="telegram_id" class="form-control" placeholder="Telegram Chat ID (isteğe bağlı)" style="width: 100%;">
-                        </div>
-                        <div style="width: 48%; display: flex; flex-direction: column; align-items: flex-end;">
-                            <label for="telefon_no">Telefon Numarası:</label>
-                            <input type="text" id="telefon_no" name="telefon_no" class="form-control" placeholder="Telefon Numarası (isteğe bağlı)" style="width: 100%;">
-                        </div>
-                    </div>
-                    <button type="submit" class="btn btn-success" style="margin-left: 0;">Ekle</button>
-                </form>
+                        <button type="submit" class="btn btn-primary">Ekle</button>
+                    </form>
+                </div>
             </div>
         </section>
 
