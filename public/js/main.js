@@ -74,7 +74,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         <td>${izin.bitis_tarihi}</td>
         <td>${izin.gunduz_yedek_adi || ''}</td>
         <td>${izin.gece_yedek_adi || ''}</td>
-        <td><button class="btn btn-danger btn-sm deleteIzinBtn" data-id="${izin.id}"><i class="fa fa-trash"></i></button></td>
+        <td>
+          <button class="btn btn-link btn-sm editIzinBtn" data-id="${izin.id}"><i class="fa fa-pencil"></i></button>
+          <button class="btn btn-danger btn-sm deleteIzinBtn" data-id="${izin.id}"><i class="fa fa-trash"></i></button>
+        </td>
       `;
       tbody.appendChild(tr);
     });
@@ -87,6 +90,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       });
     });
+    // Düzenleme butonları
+    tbody.querySelectorAll('.editIzinBtn').forEach(btn => {
+      btn.addEventListener('click', async function() {
+        const izinId = btn.dataset.id;
+        const izin = izinler.find(i => String(i.id) === String(izinId));
+        const nobetciList = await fetchNobetciList();
+        showIzinForm(nobetciList, izin);
+      });
+    });
   }
 
   async function loadIzinler() {
@@ -94,32 +106,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderIzinlerTable(izinler);
   }
 
-  function showIzinForm(nobetciList) {
+  function showIzinForm(nobetciList, izin = null) {
     const formDiv = document.getElementById('izinFormu');
     formDiv.innerHTML = `
         <form id="izinEkleForm">
             <label>Nöbetçi:
                 <select name="nobetci_id" required>
                     <option value="">Seçiniz</option>
-                    ${nobetciList.map(n => `<option value="${n.id}">${n.name}</option>`).join('')}
+                    ${nobetciList.map(n => `<option value="${n.id}"${izin && n.id == izin.nobetci_id ? ' selected' : ''}>${n.name}</option>`).join('')}
                 </select>
             </label>
             <label>Başlangıç Tarihi:
-                <input type="datetime-local" name="baslangic_tarihi" required>
+                <input type="datetime-local" name="baslangic_tarihi" required value="${izin ? izin.baslangic_tarihi.replace('T', 'T').slice(0,16) : ''}">
             </label>
             <label>Bitiş Tarihi:
-                <input type="datetime-local" name="bitis_tarihi" required>
+                <input type="datetime-local" name="bitis_tarihi" required value="${izin ? izin.bitis_tarihi.replace('T', 'T').slice(0,16) : ''}">
             </label>
             <label>Gündüz Yedek:
                 <select name="gunduz_yedek_id">
                     <option value="">Seçiniz</option>
-                    ${nobetciList.map(n => `<option value="${n.id}">${n.name}</option>`).join('')}
+                    ${nobetciList.map(n => `<option value="${n.id}"${izin && n.id == izin.gunduz_yedek_id ? ' selected' : ''}>${n.name}</option>`).join('')}
                 </select>
             </label>
             <label>Gece Yedek:
                 <select name="gece_yedek_id">
                     <option value="">Seçiniz</option>
-                    ${nobetciList.map(n => `<option value="${n.id}">${n.name}</option>`).join('')}
+                    ${nobetciList.map(n => `<option value="${n.id}"${izin && n.id == izin.gece_yedek_id ? ' selected' : ''}>${n.name}</option>`).join('')}
                 </select>
             </label>
             <button type="submit" class="btn btn-success">Kaydet</button>
@@ -132,11 +144,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         e.preventDefault();
         const formData = new FormData(this);
         const data = Object.fromEntries(formData.entries());
-        await fetch('/api/nobetci/izinler', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
+        if (izin && izin.id) {
+            await fetch(`/api/nobetci/izinler/${izin.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+        } else {
+            await fetch('/api/nobetci/izinler', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+        }
         formDiv.style.display = 'none';
         loadIzinler();
     };

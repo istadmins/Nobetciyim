@@ -337,6 +337,17 @@ router.delete('/izinler/:id', (req, res) => {
   });
 });
 
+// İzin güncelle
+router.put('/izinler/:id', (req, res) => {
+  const { nobetci_id, baslangic_tarihi, bitis_tarihi, gunduz_yedek_id, gece_yedek_id } = req.body;
+  db.run(`UPDATE nobetci_izinleri SET nobetci_id = ?, baslangic_tarihi = ?, bitis_tarihi = ?, gunduz_yedek_id = ?, gece_yedek_id = ? WHERE id = ?`,
+    [nobetci_id, baslangic_tarihi, bitis_tarihi, gunduz_yedek_id, gece_yedek_id, req.params.id],
+    function(err) {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ message: 'İzin güncellendi' });
+    });
+});
+
 // Nöbetçi listesini döndür (id, name)
 router.get('/list', (req, res) => {
   db.all('SELECT id, name FROM Nobetciler ORDER BY name ASC', [], (err, rows) => {
