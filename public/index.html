@@ -192,6 +192,26 @@
             font-weight: bold;
             letter-spacing: 1px;
         }
+        .section-card {
+            max-width: 900px;
+            margin: 2.5rem auto 2.5rem auto;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+            border-radius: 16px;
+            background: #fff;
+            padding: 0 0 2rem 0;
+        }
+        .section-title {
+            text-align: center;
+            font-size: 1.6em;
+            font-weight: bold;
+            margin: 0;
+            padding: 2rem 0 1rem 0;
+            letter-spacing: 1px;
+            color: #222;
+        }
+        .section-card .card-body {
+            padding-top: 0;
+        }
     </style>
 
 </head>
@@ -214,8 +234,8 @@
 
     <main class="container-xl">
         <section id="nobetciListesiBolumu">
-            <div class="card mb-4">
-                <div class="card-header"><span class="card-title">Nöbetçi Listesi</span></div>
+            <div class="section-card">
+                <div class="section-title">Nöbetçi Listesi</div>
                 <div class="card-body">
                     <div class="mb-3 text-center">
                         <button id="baslatKrediDagitimiBtn" class="btn btn-success me-2">Başlat</button>
