@@ -201,4 +201,18 @@ db.updateNobetciKredi = function(id, kredi) {
     });
 };
 
+db.getIzinliNobetciIdleri = function(baslangicTarihi, bitisTarihi) {
+    return new Promise((resolve, reject) => {
+        // İzinli olanlar: izin başlangıcı <= bitiş ve izin bitişi >= başlangıç (çakışan aralıklar)
+        db.all(
+            `SELECT nobetci_id FROM nobetci_izinleri WHERE NOT (bitis_tarihi <= ? OR baslangic_tarihi >= ?)`,
+            [baslangicTarihi, bitisTarihi],
+            (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows.map(r => r.nobetci_id));
+            }
+        );
+    });
+};
+
 module.exports = db;
