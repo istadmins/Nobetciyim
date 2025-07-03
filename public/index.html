@@ -16,7 +16,7 @@
             margin: 20px;
             background-color: #f5f5f5;
         }
-        .container {
+        .container-xl, .container {
             max-width: 1200px;
             margin: 0 auto;
             background: white;
@@ -24,10 +24,39 @@
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
-        h1, h2 {
-            color: #333;
+        section {
+            margin-bottom: 2rem;
+        }
+        .card {
+            margin-bottom: 2rem;
+        }
+        h1, .main-title {
+            color: #fff;
+            text-align: center;
+            font-size: 2.2em;
+            font-weight: bold;
+            letter-spacing: 1px;
+            margin-bottom: 0.5em;
+        }
+        .card-title, .green-bg-section {
+            color: #222;
+            text-align: center;
+            font-size: 1.25em;
+            font-weight: 600;
+            margin-bottom: 0.5em;
+            padding: 0.5em 0 0.5em 0;
+        }
+        h2, h3, h4 {
+            font-size: 1.1em;
+            font-weight: 600;
+            margin: 0.5em 0 0.5em 0;
             text-align: center;
         }
+        .mb-4 { margin-bottom: 2rem !important; }
+        .mb-3 { margin-bottom: 1.2rem !important; }
+        .mt-2 { margin-top: 0.7rem !important; }
+        .text-center { text-align: center !important; }
+        .float-end { float: right; }
         table {
             width: 100%;
             border-collapse: collapse;
@@ -163,23 +192,13 @@
             font-weight: bold;
             letter-spacing: 1px;
         }
-        .green-bg-section {
-            background: #fff;
-            color: #111;
-            border-radius: 10px;
-            padding: 18px 0 10px 0;
-            margin-bottom: 0;
-            text-align: center;
-            font-size: 1.3em;
-            font-weight: bold;
-        }
     </style>
 
 </head>
 <body class="bg-light">
     <header>
         <div class="container green-bg-header mb-4">
-            <h1 style="margin: 0; font-size: 1.5em; font-weight: bold; letter-spacing: 1px; color: #fff;">Nöbetçi Yönetim Sistemi</h1>
+            <h1 class="main-title">Nöbetçi Yönetim Sistemi</h1>
             <nav class="mt-2">
                 <ul class="nav nav-pills justify-content-center">
                     <li class="nav-item"><a class="nav-link" href="#nobetciListesiBolumu">Nöbetçi Listesi</a></li>
@@ -196,7 +215,7 @@
     <main class="container-xl">
         <section id="nobetciListesiBolumu">
             <div class="card mb-4">
-                <div class="card-header green-bg-section">Nöbetçi Listesi</div>
+                <div class="card-header"><span class="card-title">Nöbetçi Listesi</span></div>
                 <div class="card-body">
                     <div class="mb-3 text-center">
                         <button id="baslatKrediDagitimiBtn" class="btn btn-success me-2">Başlat</button>
@@ -224,7 +243,7 @@
 
         <section id="nobetciEkleBolumu">
             <div class="card mb-4">
-                <div class="card-header"><h2 class="card-title mb-0">Yeni Nöbetçi Ekle</h2></div>
+                <div class="card-header"><span class="card-title">Yeni Nöbetçi Ekle</span></div>
                 <div class="card-body">
                     <form id="nobetciEkleForm">
                         <div class="row mb-3">
@@ -254,112 +273,128 @@
         </section>
 
         <section id="krediKurallariBolumu">
-            <h2>Kredi Hesaplama Kuralları</h2>
-            <div class="table-responsive">
-                <table id="kurallarTablosu" class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th scope="col">Kredi Miktarı</th>
-                            <th scope="col">Açıklama</th>
-                            <th scope="col">Tarih</th>
-                            <th scope="col">İşlem</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        </tbody>
-                </table>
-            </div>
+            <div class="card mb-4">
+                <div class="card-header"><span class="card-title">Kredi Hesaplama Kuralları</span></div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="kurallarTablosu" class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Kredi Miktarı</th>
+                                    <th scope="col">Açıklama</th>
+                                    <th scope="col">Tarih</th>
+                                    <th scope="col">İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                </tbody>
+                        </table>
+                    </div>
 
-            <form id="kuralEkleForm">
-                <div class="form-group">
-                    <label for="yeniKuralKredi">Kredi Miktarı:</label>
-                    <input type="number" id="yeniKuralKredi" placeholder="Kredi miktarı" required min="0">
+                    <form id="kuralEkleForm">
+                        <div class="form-group">
+                            <label for="yeniKuralKredi">Kredi Miktarı:</label>
+                            <input type="number" id="yeniKuralKredi" placeholder="Kredi miktarı" required min="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="yeniKuralAciklama">Açıklama:</label>
+                            <input type="text" id="yeniKuralAciklama" placeholder="Örn: Ramazan Bayramı 1. Gün" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="yeniKuralTarih">Tarih:</label>
+                            <input type="date" id="yeniKuralTarih" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Yeni Kural Ekle</button>
+                    </form>
                 </div>
-                <div class="form-group">
-                    <label for="yeniKuralAciklama">Açıklama:</label>
-                    <input type="text" id="yeniKuralAciklama" placeholder="Örn: Ramazan Bayramı 1. Gün" required>
-                </div>
-                <div class="form-group">
-                    <label for="yeniKuralTarih">Tarih:</label>
-                    <input type="date" id="yeniKuralTarih" required>
-                </div>
-                <button type="submit" class="btn btn-primary">Yeni Kural Ekle</button>
-            </form>
+            </div>
         </section>
 
         <section id="zamanKrediBolumu">
-            <h2>Zaman Bazlı Kredi Hesaplama</h2>
-            <div class="table-responsive">
-                <table id="zaman-kredi-tablosu" class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th scope="col">Vardiya</th>
-                            <th scope="col">Kredi / Dakika</th>
-                            <th scope="col">Saat Aralığı</th>
-                            <th scope="col">İşlem</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        </tbody>
-                </table>
+            <div class="card mb-4">
+                <div class="card-header"><span class="card-title">Zaman Bazlı Kredi Hesaplama</span></div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="zaman-kredi-tablosu" class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Vardiya</th>
+                                    <th scope="col">Kredi / Dakika</th>
+                                    <th scope="col">Saat Aralığı</th>
+                                    <th scope="col">İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                </tbody>
+                        </table>
+                    </div>
+                    <button id="zaman-kredilerini-kaydet" class="btn btn-secondary">Değişiklikleri Kaydet</button>
+                    <button id="yeniSatirEkleBtn" class="btn btn-info">Yeni Saat Aralığı Ekle</button>
+                </div>
             </div>
-            <button id="zaman-kredilerini-kaydet" class="btn btn-secondary">Değişiklikleri Kaydet</button>
-            <button id="yeniSatirEkleBtn" class="btn btn-info">Yeni Saat Aralığı Ekle</button>
         </section>
 
         <section id="nobetciIzinleriBolumu">
-            <h2>Nöbetçi İzinleri</h2>
-            <button id="izinEkleBtn" class="btn btn-primary">Ekle</button>
-            <div id="izinFormu" style="display:none; margin-top: 16px; margin-bottom: 16px;">
-                <!-- Form alanları JS ile doldurulacak -->
-            </div>
-            <div class="table-responsive">
-                <table id="izinlerTablosu" class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Nöbetçi</th>
-                            <th>Başlangıç</th>
-                            <th>Bitiş</th>
-                            <th>Gündüz Yedek</th>
-                            <th>Gece Yedek</th>
-                            <th>İşlem</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
+            <div class="card mb-4">
+                <div class="card-header"><span class="card-title">Nöbetçi İzinleri</span></div>
+                <div class="card-body">
+                    <button id="izinEkleBtn" class="btn btn-primary">Ekle</button>
+                    <div id="izinFormu" style="display:none; margin-top: 16px; margin-bottom: 16px;">
+                        <!-- Form alanları JS ile doldurulacak -->
+                    </div>
+                    <div class="table-responsive">
+                        <table id="izinlerTablosu" class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Nöbetçi</th>
+                                    <th>Başlangıç</th>
+                                    <th>Bitiş</th>
+                                    <th>Gündüz Yedek</th>
+                                    <th>Gece Yedek</th>
+                                    <th>İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </section>
 
         <section id="takvimBolumu">
-            <h2>Nöbet Takvimi</h2>
-            <div style="text-align: center; margin-bottom: 10px;">
-                <button id="yenidenSiralaBtn" class="btn btn-primary" style="padding: 8px 12px; font-size: 0.9em;">Nöbetçileri Yeniden Sırala (Gelecek Haftadan)</button>
-            </div>
-            <div class="calendar-controls">
-                <button id="prevMonthBtn"><i class="fa fa-chevron-left"></i> Önceki Ay</button>
-                <h3 id="currentMonthYear"></h3>
-                <button id="nextMonthBtn">Sonraki Ay <i class="fa fa-chevron-right"></i></button>
-            </div>
-            <div class="table-responsive">
-                <table id="nobetTakvimi">
-                    <thead>
-                        <tr>
-                            <th>Hafta</th>
-                            <th>Ay</th>
-                            <th>Pzt</th>
-                            <th>Sal</th>
-                            <th>Çar</th>
-                            <th>Per</th>
-                            <th>Cum</th>
-                            <th>Cmt</th>
-                            <th>Paz</th>
-                            <th>Nöbetçi Adı</th>
-                            <th>Açıklama</th>
-                        </tr>
-                    </thead>
-                    <tbody id="takvimBody">
-                        </tbody>
-                </table>
+            <div class="card mb-4">
+                <div class="card-header"><span class="card-title">Nöbet Takvimi</span></div>
+                <div class="card-body">
+                    <div style="text-align: center; margin-bottom: 10px;">
+                        <button id="yenidenSiralaBtn" class="btn btn-primary" style="padding: 8px 12px; font-size: 0.9em;">Nöbetçileri Yeniden Sırala (Gelecek Haftadan)</button>
+                    </div>
+                    <div class="calendar-controls">
+                        <button id="prevMonthBtn"><i class="fa fa-chevron-left"></i> Önceki Ay</button>
+                        <h3 id="currentMonthYear"></h3>
+                        <button id="nextMonthBtn">Sonraki Ay <i class="fa fa-chevron-right"></i></button>
+                    </div>
+                    <div class="table-responsive">
+                        <table id="nobetTakvimi">
+                            <thead>
+                                <tr>
+                                    <th>Hafta</th>
+                                    <th>Ay</th>
+                                    <th>Pzt</th>
+                                    <th>Sal</th>
+                                    <th>Çar</th>
+                                    <th>Per</th>
+                                    <th>Cum</th>
+                                    <th>Cmt</th>
+                                    <th>Paz</th>
+                                    <th>Nöbetçi Adı</th>
+                                    <th>Açıklama</th>
+                                </tr>
+                            </thead>
+                            <tbody id="takvimBody">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </section>
     </main>
