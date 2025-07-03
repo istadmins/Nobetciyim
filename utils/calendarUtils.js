@@ -128,7 +128,18 @@ async function getNobetSiralamaAyarlari() {
     return new Promise((resolve) => {
         db.get("SELECT ayar_value FROM uygulama_ayarlari WHERE ayar_key = 'nobet_siralama_ayarlari'", [], (err, row) => {
             if (err || !row) {
-                resolve({ aktif: false, baslangicYili: 0, baslangicHaftasi: 0, baslangicNobetciIndex: 0 });
+                // resort_config anahtarını da kontrol et
+                db.get("SELECT ayar_value FROM uygulama_ayarlari WHERE ayar_key = 'resort_config'", [], (err2, row2) => {
+                    if (err2 || !row2) {
+                        resolve({ aktif: false, baslangicYili: 0, baslangicHaftasi: 0, baslangicNobetciIndex: 0 });
+                    } else {
+                        try {
+                            resolve(JSON.parse(row2.ayar_value));
+                        } catch (e) {
+                            resolve({ aktif: false, baslangicYili: 0, baslangicHaftasi: 0, baslangicNobetciIndex: 0 });
+                        }
+                    }
+                });
             } else {
                 try {
                     resolve(JSON.parse(row.ayar_value));
