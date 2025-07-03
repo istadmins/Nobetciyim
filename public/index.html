@@ -2,86 +2,208 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Nöbetçi Yönetim Sistemi</title>
+    <title>Nöbetçi Listesi</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="style.css">
+    <!-- Tabler CSS sadece görsel için ekleniyor -->
     <link href="https://unpkg.com/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet"/>
 </head>
 <body>
-<div class="page">
-    <header class="navbar navbar-expand-md navbar-light d-print-none">
-        <div class="container-xl">
-            <a href="#" class="navbar-brand">Nöbetçi Yönetim Sistemi</a>
-            <div class="navbar-nav flex-row order-md-last">
-                <button id="logoutBtn" class="btn btn-danger">Çıkış Yap</button>
-            </div>
+    <header>
+        <div class="container green-bg-header">
+            <h1 style="margin: 0; font-size: 1.5em; font-weight: bold; letter-spacing: 1px; color: #fff;">Nöbetçi Yönetim Sistemi</h1>
+            <nav>
+                <ul>
+                    <li><a href="#nobetciListesiBolumu">Nöbetçi Listesi</a></li>
+                    <li><a href="#nobetciEkleBolumu">Nöbetçi Ekle</a></li>
+                    <li><a href="#krediKurallariBolumu">Kredi Kuralları</a></li>
+                    <li><a href="#zamanKrediBolumu">Zaman Bazlı Kredi</a></li>
+                    <li><a href="#takvimBolumu">Nöbet Takvimi</a></li>
+                </ul>
+            </nav>
+            <button id="logoutBtn">Çıkış Yap</button>
         </div>
     </header>
-    <div class="page-wrapper">
-        <div class="container-xl mt-4">
-            <div class="row row-cards">
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-header"><h3 class="card-title">Nöbetçi Listesi</h3></div>
-                        <div class="card-body">
-                            <div class="mb-2">
-                                <button id="baslatKrediDagitimiBtn" class="btn btn-success">Başlat</button>
-                            </div>
-                            <div class="table-responsive">
-                                <table id="nobetciTable" class="table table-vcenter table-bordered">
-                                    <thead>
-                                    <tr>
-                                        <th>Seç</th>
-                                        <th>İsim</th>
-                                        <th>Telegram ID</th>
-                                        <th>Telefon No</th>
-                                        <th>Kazanılan Kredi</th>
-                                        <th>Pay Edilen Kredi</th>
-                                        <th>Kalan Kredi</th>
-                                        <th>İşlemler</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody id="nobetciTableBody"></tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-12 mt-4">
-                    <div class="card">
-                        <div class="card-header"><h3 class="card-title">Yeni Nöbetçi Ekle</h3></div>
-                        <div class="card-body">
-                            <form id="nobetciEkleForm">
-                                <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <label for="name" class="form-label">İsim</label>
-                                        <input type="text" id="name" name="name" class="form-control" required>
-                                    </div>
-                                    <div class="col-md-6 mb-3">
-                                        <label for="password" class="form-label">Şifre</label>
-                                        <input type="password" id="password" name="password" class="form-control" required>
-                                    </div>
-                                </div>
-                                <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <label for="telegram_id" class="form-label">Telegram Chat ID</label>
-                                        <input type="text" id="telegram_id" name="telegram_id" class="form-control">
-                                    </div>
-                                    <div class="col-md-6 mb-3">
-                                        <label for="telefon_no" class="form-label">Telefon Numarası</label>
-                                        <input type="text" id="telefon_no" name="telefon_no" class="form-control">
-                                    </div>
-                                </div>
-                                <button type="submit" class="btn btn-primary">Ekle</button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-                <!-- Diğer bölümler (Kredi Kuralları, Zaman Bazlı Kredi, Takvim) için benzer şekilde card yapısı eklenebilir -->
+
+    <main class="container">
+        <section id="nobetciListesiBolumu">
+            <div class="green-bg-section">Nöbetçi Listesi</div>
+            <div style="text-align: center; margin-bottom: 15px;">
+                <button id="baslatKrediDagitimiBtn" class="btn btn-success" style="margin-right: 10px;">Başlat</button>
             </div>
-        </div>
-    </div>
-</div>
-<script src="https://unpkg.com/@tabler/core@latest/dist/js/tabler.min.js"></script>
-<script src="js/main.js"></script>
+            <div class="table-responsive">
+                <table id="nobetciTable">
+                    <thead>
+                        <tr>
+                            <th scope="col">Seç</th>
+                            <th scope="col">İsim</th>
+                            <th scope="col">Telegram ID</th>
+                            <th scope="col">Telefon No</th>
+                            <th scope="col">Kazanılan Kredi</th>
+                            <th scope="col">Pay Edilen Kredi</th>
+                            <th scope="col">Kalan Kredi</th>
+                            <th scope="col">İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody id="nobetciTableBody">
+                        </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="nobetciEkleBolumu">
+            <div class="yeni-nobetci-form" style="max-width: 900px; margin: 0 auto;">
+                <h2 style="text-align: center; margin-bottom: 24px;">Yeni Nöbetçi Ekle</h2>
+                <form id="nobetciEkleForm">
+                    <div style="display: flex; margin-bottom: 16px; justify-content: space-between; align-items: flex-end;">
+                        <div style="width: 48%; display: flex; flex-direction: column; align-items: flex-start;">
+                            <label for="name">İsim:</label>
+                            <input type="text" id="name" name="name" class="form-control" placeholder="İsim" required style="width: 100%;">
+                        </div>
+                        <div style="width: 48%; display: flex; flex-direction: column; align-items: flex-end;">
+                            <label for="password">Şifre:</label>
+                            <input type="password" id="password" name="password" class="form-control" placeholder="Şifre" required style="width: 100%;">
+                        </div>
+                    </div>
+                    <div style="display: flex; margin-bottom: 16px; justify-content: space-between; align-items: flex-end;">
+                        <div style="width: 48%; display: flex; flex-direction: column; align-items: flex-start;">
+                            <label for="telegram_id">Telegram Chat ID:</label>
+                            <input type="text" id="telegram_id" name="telegram_id" class="form-control" placeholder="Telegram Chat ID (isteğe bağlı)" style="width: 100%;">
+                        </div>
+                        <div style="width: 48%; display: flex; flex-direction: column; align-items: flex-end;">
+                            <label for="telefon_no">Telefon Numarası:</label>
+                            <input type="text" id="telefon_no" name="telefon_no" class="form-control" placeholder="Telefon Numarası (isteğe bağlı)" style="width: 100%;">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-success" style="margin-left: 0;">Ekle</button>
+                </form>
+            </div>
+        </section>
+
+        <section id="krediKurallariBolumu">
+            <h2>Kredi Hesaplama Kuralları</h2>
+            <div class="table-responsive">
+                <table id="kurallarTablosu" class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th scope="col">Kredi Miktarı</th>
+                            <th scope="col">Açıklama</th>
+                            <th scope="col">Tarih</th>
+                            <th scope="col">İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        </tbody>
+                </table>
+            </div>
+
+            <form id="kuralEkleForm">
+                <div class="form-group">
+                    <label for="yeniKuralKredi">Kredi Miktarı:</label>
+                    <input type="number" id="yeniKuralKredi" placeholder="Kredi miktarı" required min="0">
+                </div>
+                <div class="form-group">
+                    <label for="yeniKuralAciklama">Açıklama:</label>
+                    <input type="text" id="yeniKuralAciklama" placeholder="Örn: Ramazan Bayramı 1. Gün" required>
+                </div>
+                <div class="form-group">
+                    <label for="yeniKuralTarih">Tarih:</label>
+                    <input type="date" id="yeniKuralTarih" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Yeni Kural Ekle</button>
+            </form>
+        </section>
+
+        <section id="zamanKrediBolumu">
+            <h2>Zaman Bazlı Kredi Hesaplama</h2>
+            <div class="table-responsive">
+                <table id="zaman-kredi-tablosu" class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th scope="col">Vardiya</th>
+                            <th scope="col">Kredi / Dakika</th>
+                            <th scope="col">Saat Aralığı</th>
+                            <th scope="col">İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        </tbody>
+                </table>
+            </div>
+
+            <button id="zaman-kredilerini-kaydet" class="btn btn-secondary">Değişiklikleri Kaydet</button>
+            <button id="yeniSatirEkleBtn" class="btn btn-info">Yeni Saat Aralığı Ekle</button>
+        </section>
+
+        <section id="nobetciIzinleriBolumu">
+            <h2>Nöbetçi İzinleri</h2>
+            <button id="izinEkleBtn" class="btn btn-primary">Ekle</button>
+            <div id="izinFormu" style="display:none; margin-top: 16px; margin-bottom: 16px;">
+                <!-- Form alanları JS ile doldurulacak -->
+            </div>
+            <div class="table-responsive">
+                <table id="izinlerTablosu" class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Nöbetçi</th>
+                            <th>Başlangıç</th>
+                            <th>Bitiş</th>
+                            <th>Gündüz Yedek</th>
+                            <th>Gece Yedek</th>
+                            <th>İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="takvimBolumu">
+            <h2>Nöbet Takvimi</h2>
+            <div style="text-align: center; margin-bottom: 10px;">
+                <button id="yenidenSiralaBtn" class="btn btn-primary" style="padding: 8px 12px; font-size: 0.9em;">Nöbetçileri Yeniden Sırala (Gelecek Haftadan)</button>
+            </div>
+            <div class="calendar-controls">
+                <button id="prevMonthBtn"><i class="fa fa-chevron-left"></i> Önceki Ay</button>
+                <h3 id="currentMonthYear"></h3>
+                <button id="nextMonthBtn">Sonraki Ay <i class="fa fa-chevron-right"></i></button>
+            </div>
+            <div class="table-responsive">
+                <table id="nobetTakvimi">
+                    <thead>
+                        <tr>
+                            <th>Hafta</th>
+                            <th>Ay</th>
+                            <th>Pzt</th>
+                            <th>Sal</th>
+                            <th>Çar</th>
+                            <th>Per</th>
+                            <th>Cum</th>
+                            <th>Cmt</th>
+                            <th>Paz</th>
+                            <th>Nöbetçi Adı</th>
+                            <th>Açıklama</th>
+                        </tr>
+                    </thead>
+                    <tbody id="takvimBody">
+                        </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <footer class="text-center">
+        <p>&copy; 2024-2025 Nöbetçi Yönetim Sistemi</p>
+    </footer>
+
+    <script src="js/auth.js"></script>
+    <script src="js/hesaplama.js"></script>
+    <script src="js/nobetciIslemleri.js"></script>
+    <script src="js/kuralIslemleri.js"></script>
+    <script src="js/zamanKrediIslemleri.js"></script>
+    <script src="js/calendar.js"></script>
+    <!-- Tabler JS sadece görsel için ekleniyor -->
+    <script src="https://unpkg.com/@tabler/core@latest/dist/js/tabler.min.js"></script>
 </body>
 </html>
