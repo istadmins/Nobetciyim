@@ -371,10 +371,15 @@ botInstance.onText(/^\/gelecek_hafta_nobetci$/, async (msg) => {
     
     try {
         const today = new Date();
-        const nextWeekDate = new Date(today.getTime());
-        nextWeekDate.setDate(today.getDate() + 7);
+        // Pazartesi'yi bul
+        const dayOfWeek = today.getDay(); // 0: Pazar, 1: Pazartesi, ...
+        const daysToMonday = (dayOfWeek === 0 ? -6 : 1) - dayOfWeek;
+        const thisMonday = new Date(today);
+        thisMonday.setDate(today.getDate() + daysToMonday);
+        const nextMonday = new Date(thisMonday);
+        nextMonday.setDate(thisMonday.getDate() + 7);
 
-        const gelecekHaftaNobetci = await getAsilHaftalikNobetci(nextWeekDate);
+        const gelecekHaftaNobetci = await getAsilHaftalikNobetci(nextMonday);
         const buHaftaNobetci = await getAsilHaftalikNobetci(today);
 
         // Bu haftanın bilgilerini al
@@ -383,8 +388,8 @@ botInstance.onText(/^\/gelecek_hafta_nobetci$/, async (msg) => {
         const buHaftaAciklama = await db.getDutyOverride(buHaftaYil, buHaftaNo);
 
         // Gelecek haftanın bilgilerini al
-        const gelecekHaftaYil = nextWeekDate.getFullYear();
-        const gelecekHaftaNo = getWeekOfYear(nextWeekDate);
+        const gelecekHaftaYil = nextMonday.getFullYear();
+        const gelecekHaftaNo = getWeekOfYear(nextMonday);
         const gelecekHaftaAciklama = await db.getDutyOverride(gelecekHaftaYil, gelecekHaftaNo);
 
         let message = `📅 Haftalık Nöbetçi Bilgileri
