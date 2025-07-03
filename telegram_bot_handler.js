@@ -371,15 +371,13 @@ botInstance.onText(/^\/gelecek_hafta_nobetci$/, async (msg) => {
     
     try {
         const today = new Date();
-        // Pazartesi'yi bul
-        const dayOfWeek = today.getDay(); // 0: Pazar, 1: Pazartesi, ...
-        const daysToMonday = (dayOfWeek === 0 ? -6 : 1) - dayOfWeek;
-        const thisMonday = new Date(today);
-        thisMonday.setDate(today.getDate() + daysToMonday);
-        const nextMonday = new Date(thisMonday);
-        nextMonday.setDate(thisMonday.getDate() + 7);
+        console.log(`[DEBUG] Bugün: ${today.toISOString()}, Gün: ${today.getDay()}`);
+        
+        // Web takvimindeki algoritma ile aynı hesaplama
+        const gelecekHaftaBasi = new Date(today.getFullYear(), today.getMonth(), today.getDate() - today.getDay() + 1 + 7);
+        console.log(`[DEBUG] Gelecek hafta başı (web algoritması): ${gelecekHaftaBasi.toISOString()}`);
 
-        const gelecekHaftaNobetci = await getAsilHaftalikNobetci(nextMonday);
+        const gelecekHaftaNobetci = await getAsilHaftalikNobetci(gelecekHaftaBasi);
         const buHaftaNobetci = await getAsilHaftalikNobetci(today);
 
         // Bu haftanın bilgilerini al
@@ -388,9 +386,12 @@ botInstance.onText(/^\/gelecek_hafta_nobetci$/, async (msg) => {
         const buHaftaAciklama = await db.getDutyOverride(buHaftaYil, buHaftaNo);
 
         // Gelecek haftanın bilgilerini al
-        const gelecekHaftaYil = nextMonday.getFullYear();
-        const gelecekHaftaNo = getWeekOfYear(nextMonday);
+        const gelecekHaftaYil = gelecekHaftaBasi.getFullYear();
+        const gelecekHaftaNo = getWeekOfYear(gelecekHaftaBasi);
         const gelecekHaftaAciklama = await db.getDutyOverride(gelecekHaftaYil, gelecekHaftaNo);
+
+        console.log(`[DEBUG] Bu hafta: ${buHaftaNo}. hafta, Gelecek hafta: ${gelecekHaftaNo}. hafta`);
+        console.log(`[DEBUG] Bu hafta nöbetçi: ${buHaftaNobetci?.name}, Gelecek hafta nöbetçi: ${gelecekHaftaNobetci?.name}`);
 
         let message = `📅 Haftalık Nöbetçi Bilgileri
 
