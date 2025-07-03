@@ -543,6 +543,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const gelecekHaftaBasi = new Date(bugun.getFullYear(), bugun.getMonth(), bugun.getDate() - bugun.getDay() + 1 + 7);
                 const baslangicYili = gelecekHaftaBasi.getFullYear();
                 const baslangicHaftasi = getWeekOfYear(gelecekHaftaBasi);
+                
+                // Debug log
+                console.log('[WEB DEBUG] Bugün:', bugun.toISOString(), 'Gün:', bugun.getDay());
+                console.log('[WEB DEBUG] Gelecek hafta başı:', gelecekHaftaBasi.toISOString());
+                console.log('[WEB DEBUG] Başlangıç yılı:', baslangicYili, 'Başlangıç haftası:', baslangicHaftasi);
                 const secilenNobetciAdi = nobetciler[secilenBaslangicNobetciIndex].name;
 
                 if (confirm(`'${secilenNobetciAdi}' adlı nöbetçi, ${baslangicYili} yılı ${baslangicHaftasi}. haftasından itibaren başlayacak şekilde sıralama yapılacaktır. Onaylıyor musunuz?`)) {
