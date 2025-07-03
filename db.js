@@ -80,6 +80,11 @@ function initializeSchema() {
             FOREIGN KEY (gunduz_yedek_id) REFERENCES Nobetciler(id),
             FOREIGN KEY (gece_yedek_id) REFERENCES Nobetciler(id)
         );
+
+        CREATE TABLE IF NOT EXISTS uygulama_ayarlari (
+            ayar_key TEXT PRIMARY KEY,
+            ayar_value TEXT NOT NULL
+        );
     `;
 
     db.exec(createTablesSql, (err) => {

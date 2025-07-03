@@ -38,7 +38,8 @@ async function getAllNobetcilerFromDB() {
 /**
  * Belirtilen bir tarih için asıl nöbetçiyi belirler.
  * ÖNCELİK 1: Takvimdeki manuel atamayı (override) kontrol eder.
- * ÖNCELİK 2: Manuel atama yoksa, basit ve güvenilir bir otomatik rotasyon uygular.
+ * ÖNCELİK 2: Manuel atama yoksa, nöbet sıralama ayarlarını kontrol eder.
+ * ÖNCELİK 3: Sıralama ayarları yoksa, basit ve güvenilir bir otomatik rotasyon uygular.
  * @param {Date} date - Nöbetçinin belirleneceği tarih.
  * @returns {Promise<Object|null>} Nöbetçi nesnesi veya bulunamazsa null.
  */
@@ -60,7 +61,10 @@ async function getAsilHaftalikNobetci(date) {
             }
         }
 
-        // ÖNCELİK 2: Manuel atama yoksa, otomatik rotasyonu hesapla.
+        // ÖNCELİK 2: Nöbet sıralama ayarlarını kontrol et
+        const nobetSiralamaAyarlari = await getNobetSiralamaAyarlari();
+        console.log(`[DEBUG] Nöbet sıralama ayarları:`, nobetSiralamaAyarlari);
+
         const nobetciler = await getAllNobetcilerFromDB();
         console.log(`[DEBUG] Toplam nöbetçi sayısı: ${nobetciler.length}`);
         
@@ -69,24 +73,71 @@ async function getAsilHaftalikNobetci(date) {
             return null;
         }
 
-        // Basit ve güvenilir rotasyon: (hafta numarası - 1) % nöbetçi sayısı
-        const nobetciIndex = (hafta - 1) % nobetciler.length;
-        const asilNobetci = nobetciler[nobetciIndex];
+        let nobetciIndex;
 
-        console.log(`[DEBUG] Otomatik rotasyon: Index ${nobetciIndex}, Nöbetçi: ${asilNobetci?.name}`);
+        // Nöbet sıralama ayarları aktif mi ve bu hafta için geçerli mi?
+        if (nobetSiralamaAyarlari.aktif &&
+            (yil > nobetSiralamaAyarlari.baslangicYili ||
+             (yil === nobetSiralamaAyarlari.baslangicYili && hafta >= nobetSiralamaAyarlari.baslangicHaftasi))) {
+            
+            console.log(`[DEBUG] Nöbet sıralama ayarları kullanılıyor`);
+            
+            let haftalarFarki = 0;
+            if (yil === nobetSiralamaAyarlari.baslangicYili) {
+                haftalarFarki = hafta - nobetSiralamaAyarlari.baslangicHaftasi;
+            } else {
+                let baslangicYilindakiSonHafta = getWeekOfYear(new Date(nobetSiralamaAyarlari.baslangicYili, 11, 28));
+                haftalarFarki = baslangicYilindakiSonHafta - nobetSiralamaAyarlari.baslangicHaftasi;
+                for (let y = nobetSiralamaAyarlari.baslangicYili + 1; y < yil; y++) {
+                    haftalarFarki += getWeekOfYear(new Date(y, 11, 28));
+                }
+                haftalarFarki += hafta;
+            }
+            nobetciIndex = (nobetSiralamaAyarlari.baslangicNobetciIndex + haftalarFarki) % nobetciler.length;
+            console.log(`[DEBUG] Sıralama hesaplaması: Haftalar farkı=${haftalarFarki}, Index=${nobetciIndex}`);
+        } else {
+            // ÖNCELİK 3: Basit ve güvenilir rotasyon: (hafta numarası - 1) % nöbetçi sayısı
+            const yearStartDateForWeekCalc = new Date(yil, 0, 1);
+            const weeksSinceYearStart = hafta - getWeekOfYear(yearStartDateForWeekCalc) + 1;
+            nobetciIndex = (weeksSinceYearStart - 1 + nobetciler.length) % nobetciler.length;
+            console.log(`[DEBUG] Basit rotasyon: Yıl başından haftalar=${weeksSinceYearStart}, Index=${nobetciIndex}`);
+        }
+
+        const asilNobetci = nobetciler[nobetciIndex];
+        console.log(`[DEBUG] Seçilen nöbetçi: Index ${nobetciIndex}, Nöbetçi: ${asilNobetci?.name}`);
 
         if (!asilNobetci) {
-            console.error(`[Asil Nobetci] Otomatik rotasyon hesaplama hatası: Index ${nobetciIndex} için nöbetçi bulunamadı.`);
+            console.error(`[Asil Nobetci] Nöbetçi hesaplama hatası: Index ${nobetciIndex} için nöbetçi bulunamadı.`);
             return null;
         }
 
-        console.log(`[Asil Nobetci] Otomatik rotasyon hesaplandı: Yıl ${yil}, Hafta ${hafta} -> ${asilNobetci.name}`);
+        console.log(`[Asil Nobetci] Nöbetçi belirlendi: Yıl ${yil}, Hafta ${hafta} -> ${asilNobetci.name}`);
         return asilNobetci;
 
     } catch (error) {
         console.error("[Asil Nobetci] Asıl haftalık nöbetçi belirlenirken kritik hata oluştu:", error);
         return null;
     }
+}
+
+/**
+ * Nöbet sıralama ayarlarını veritabanından alır.
+ * @returns {Promise<Object>} Nöbet sıralama ayarları
+ */
+async function getNobetSiralamaAyarlari() {
+    return new Promise((resolve) => {
+        db.get("SELECT ayar_value FROM uygulama_ayarlari WHERE ayar_key = 'nobet_siralama_ayarlari'", [], (err, row) => {
+            if (err || !row) {
+                resolve({ aktif: false, baslangicYili: 0, baslangicHaftasi: 0, baslangicNobetciIndex: 0 });
+            } else {
+                try {
+                    resolve(JSON.parse(row.ayar_value));
+                } catch (e) {
+                    resolve({ aktif: false, baslangicYili: 0, baslangicHaftasi: 0, baslangicNobetciIndex: 0 });
+                }
+            }
+        });
+    });
 }
 
 module.exports = {
