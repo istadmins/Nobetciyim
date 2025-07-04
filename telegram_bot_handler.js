@@ -400,6 +400,18 @@ botInstance.onText(/^\/gelecek_hafta_nobetci$/, async (msg) => {
         sundayNextWeek.setHours(23, 59, 59, 999);
 
         const izinler = await db.getIzinlerForDateRange(mondayThisWeek.toISOString(), sundayNextWeek.toISOString());
+        // Bu haftanın izinlileri
+        const sundayThisWeek = new Date(mondayThisWeek);
+        sundayThisWeek.setDate(mondayThisWeek.getDate() + 6);
+        sundayThisWeek.setHours(23, 59, 59, 999);
+        let izinliBuHafta = izinler.filter(i => {
+            const bas = new Date(i.baslangic_tarihi);
+            const bit = new Date(i.bitis_tarihi);
+            return (
+                (bas <= sundayThisWeek && bit >= mondayThisWeek)
+            );
+        });
+        // Gelecek haftanın izinlileri
         let izinliGelecekHafta = izinler.filter(i => {
             const bas = new Date(i.baslangic_tarihi);
             const bit = new Date(i.bitis_tarihi);
@@ -408,13 +420,16 @@ botInstance.onText(/^\/gelecek_hafta_nobetci$/, async (msg) => {
             );
         });
 
-        let izinliText = izinliGelecekHafta.length > 0
+        let izinliBuHaftaText = izinliBuHafta.length > 0
+            ? `\n🚫 *Bu Hafta İzinli Olanlar:*\n` + izinliBuHafta.map(i => `• ${i.nobetci_adi} (${i.baslangic_tarihi.slice(0,10)} - ${i.bitis_tarihi.slice(0,10)})`).join("\n")
+            : "";
+        let izinliGelecekHaftaText = izinliGelecekHafta.length > 0
             ? `\n🚫 *Gelecek Hafta İzinli Olanlar:*\n` + izinliGelecekHafta.map(i => `• ${i.nobetci_adi} (${i.baslangic_tarihi.slice(0,10)} - ${i.bitis_tarihi.slice(0,10)})`).join("\n")
             : "";
 
         let msgText = `📅 *Haftalık Nöbetçi Bilgileri*\n\n` +
             `📍 Gelecek Hafta (${gelecekHaftaNo}. hafta):\n👨‍⚕️ Nöbetçi: ${gelecekHaftaNobetci ? gelecekHaftaNobetci.name : '-'}\n` +
-            izinliText;
+            izinliBuHaftaText + izinliGelecekHaftaText;
 
         botInstance.sendMessage(chatId, msgText, { parse_mode: 'Markdown' });
     } catch (error) {
