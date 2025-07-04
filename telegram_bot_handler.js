@@ -420,19 +420,21 @@ botInstance.onText(/^\/gelecek_hafta_nobetci$/, async (msg) => {
             );
         });
 
-        // Yardımcı: ISO -> DD.MM.YYYY
-        function toTurkishDate(iso) {
+        // Yardımcı: ISO -> DD.MM.YYYY SS:dd
+        function toTurkishDateTime(iso) {
             const d = new Date(iso);
             const gun = String(d.getDate()).padStart(2, '0');
             const ay = String(d.getMonth() + 1).padStart(2, '0');
             const yil = d.getFullYear();
-            return `${gun}.${ay}.${yil}`;
+            const saat = String(d.getHours()).padStart(2, '0');
+            const dakika = String(d.getMinutes()).padStart(2, '0');
+            return `${gun}.${ay}.${yil} ${saat}:${dakika}`;
         }
         let izinliBuHaftaText = izinliBuHafta.length > 0
-            ? `\n🚫 *Bu Hafta İzinli Olanlar:*\n` + izinliBuHafta.map(i => `• ${i.nobetci_adi} (${toTurkishDate(i.baslangic_tarihi)} - ${toTurkishDate(i.bitis_tarihi)})`).join("\n")
+            ? `\n🚫 *Bu Hafta İzinli Olanlar:*\n` + izinliBuHafta.map(i => `• ${i.nobetci_adi} (${toTurkishDateTime(i.baslangic_tarihi)} - ${toTurkishDateTime(i.bitis_tarihi)})`).join("\n")
             : "";
         let izinliGelecekHaftaText = izinliGelecekHafta.length > 0
-            ? `\n🚫 *Gelecek Hafta İzinli Olanlar:*\n` + izinliGelecekHafta.map(i => `• ${i.nobetci_adi} (${toTurkishDate(i.baslangic_tarihi)} - ${toTurkishDate(i.bitis_tarihi)})`).join("\n")
+            ? `\n🚫 *Gelecek Hafta İzinli Olanlar:*\n` + izinliGelecekHafta.map(i => `• ${i.nobetci_adi} (${toTurkishDateTime(i.baslangic_tarihi)} - ${toTurkishDateTime(i.bitis_tarihi)})`).join("\n")
             : "";
 
         let msgText = `📅 *Haftalık Nöbetçi Bilgileri*\n\n` +
