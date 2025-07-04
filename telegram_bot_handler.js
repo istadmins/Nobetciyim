@@ -363,55 +363,84 @@ Merhaba ${guncelNobetci.name},
 botInstance.onText(/^\/gelecek_hafta_nobetci$/, async (msg) => {
     const chatId = msg.chat.id;
     const nobetciYetkili = await getAuthorizedNobetciByTelegramId(chatId);
+    
     if (!nobetciYetkili) {
         return botInstance.sendMessage(chatId, "❌ Bu komutu kullanma yetkiniz bulunmamaktadır.");
     }
+    
     try {
         const today = new Date();
+        // Web takvimindeki algoritma ile aynı hesaplama
         const gelecekHaftaBasi = new Date(today.getFullYear(), today.getMonth(), today.getDate() - today.getDay() + 1 + 7);
         const gelecekHaftaSonu = new Date(gelecekHaftaBasi);
         gelecekHaftaSonu.setDate(gelecekHaftaBasi.getDate() + 6);
-        // Haftanın her günü için asıl nöbetçi ve izinli/yedek kontrolü
-        const daysOfWeek = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
-        const asilNobetci = await getAsilHaftalikNobetci(gelecekHaftaBasi);
-        let asilNobetciId = asilNobetci ? asilNobetci.id : null;
-        // O hafta için izinli günleri ve yedekleri bul
-        const izinler = await db.getIzinlerForDateRange(gelecekHaftaBasi.toISOString(), gelecekHaftaSonu.toISOString());
-        // Haftanın her günü için nöbetçi ve yedek kontrolü
-        let izinliGunler = [];
-        let izinliGunSayisi = 0;
-        let yedekIsimleri = new Set();
-        for (let i = 0; i < 7; i++) {
-            const gunTarihi = new Date(gelecekHaftaBasi);
-            gunTarihi.setDate(gelecekHaftaBasi.getDate() + i);
-            gunTarihi.setHours(9,0,0,0); // Gündüz vardiyası için örnek saat
-            // O gün asıl nöbetçi izinli mi?
-            const izinKaydi = izinler.find(iz => iz.nobetci_id == asilNobetciId && new Date(iz.baslangic_tarihi) <= gunTarihi && new Date(iz.bitis_tarihi) >= gunTarihi);
-            if (izinKaydi) {
-                izinliGunSayisi++;
-                // Gündüz/gece yedeği seçimi (örnek: sadece gündüz yedeği gösteriyoruz)
-                let yedekIsim = izinKaydi.gunduz_yedek_adi || izinKaydi.gece_yedek_adi || '-';
-                yedekIsimleri.add(yedekIsim);
-                izinliGunler.push(`• ${daysOfWeek[i]}: Yedek (${yedekIsim})`);
-            }
+
+        const gelecekHaftaNobetci = await getAsilHaftalikNobetci(gelecekHaftaBasi);
+        const buHaftaNobetci = await getAsilHaftalikNobetci(today);
+
+        // Bu haftanın bilgilerini al
+        const buHaftaYil = today.getFullYear();
+        const buHaftaNo = getWeekOfYear(today);
+        const buHaftaAciklama = await db.getDutyOverride(buHaftaYil, buHaftaNo);
+
+        // Gelecek haftanın bilgilerini al
+        const gelecekHaftaYil = gelecekHaftaBasi.getFullYear();
+        const gelecekHaftaNo = getWeekOfYear(gelecekHaftaBasi);
+        const gelecekHaftaAciklama = await db.getDutyOverride(gelecekHaftaYil, gelecekHaftaNo);
+
+        // --- İzinli nöbetçileri çek ---
+        // Bu haftanın Pazartesi'si 00:00
+        const dayOfWeek = today.getDay(); // 0: Pazar, 1: Pazartesi, ...
+        const mondayThisWeek = new Date(today);
+        mondayThisWeek.setDate(today.getDate() - ((dayOfWeek + 6) % 7));
+        mondayThisWeek.setHours(0, 0, 0, 0);
+        // Gelecek haftanın Pazar'ı 23:59:59
+        const sundayNextWeek = new Date(mondayThisWeek);
+        sundayNextWeek.setDate(mondayThisWeek.getDate() + 13);
+        sundayNextWeek.setHours(23, 59, 59, 999);
+
+        const izinler = await db.getIzinlerForDateRange(mondayThisWeek.toISOString(), sundayNextWeek.toISOString());
+        // Bu haftanın izinlileri
+        const sundayThisWeek = new Date(mondayThisWeek);
+        sundayThisWeek.setDate(mondayThisWeek.getDate() + 6);
+        sundayThisWeek.setHours(23, 59, 59, 999);
+        let izinliBuHafta = izinler.filter(i => {
+            const bas = new Date(i.baslangic_tarihi);
+            const bit = new Date(i.bitis_tarihi);
+            return (
+                (bas <= sundayThisWeek && bit >= mondayThisWeek)
+            );
+        });
+        // Gelecek haftanın izinlileri
+        let izinliGelecekHafta = izinler.filter(i => {
+            const bas = new Date(i.baslangic_tarihi);
+            const bit = new Date(i.bitis_tarihi);
+            return (
+                (bas <= gelecekHaftaSonu && bit >= gelecekHaftaBasi)
+            );
+        });
+
+        // Yardımcı: ISO -> DD.MM.YYYY SS:dd
+        function toTurkishDateTime(iso) {
+            const d = new Date(iso);
+            const gun = String(d.getDate()).padStart(2, '0');
+            const ay = String(d.getMonth() + 1).padStart(2, '0');
+            const yil = d.getFullYear();
+            const saat = String(d.getHours()).padStart(2, '0');
+            const dakika = String(d.getMinutes()).padStart(2, '0');
+            return `${gun}.${ay}.${yil} ${saat}:${dakika}`;
         }
-        // Haftalık nöbetçi metni
-        let nobetciSatiri = '';
-        if (asilNobetci) {
-            if (izinliGunSayisi >= 3) {
-                nobetciSatiri = `👨‍⚕️ Nöbetçi: ${asilNobetci.name} (izinli günlerde yedek: ${Array.from(yedekIsimleri).filter(x=>x&&x!=='-').join(', ') || '-'})`;
-            } else {
-                nobetciSatiri = `👨‍⚕️ Nöbetçi: ${asilNobetci.name}`;
-            }
-        } else {
-            nobetciSatiri = `👨‍⚕️ Nöbetçi: -`;
-        }
+        let izinliBuHaftaText = izinliBuHafta.length > 0
+            ? `\n🚫 *Bu Hafta İzinli Olanlar:*\n` + izinliBuHafta.map(i => `• ${i.nobetci_adi} (${toTurkishDateTime(i.baslangic_tarihi)} - ${toTurkishDateTime(i.bitis_tarihi)})`).join("\n")
+            : "";
+        let izinliGelecekHaftaText = izinliGelecekHafta.length > 0
+            ? `\n🚫 *Gelecek Hafta İzinli Olanlar:*\n` + izinliGelecekHafta.map(i => `• ${i.nobetci_adi} (${toTurkishDateTime(i.baslangic_tarihi)} - ${toTurkishDateTime(i.bitis_tarihi)})`).join("\n")
+            : "";
+
         let msgText = `📅 *Haftalık Nöbetçi Bilgileri*\n\n` +
-            `📍 Gelecek Hafta (${getWeekOfYear(gelecekHaftaBasi)}. hafta):\n` +
-            nobetciSatiri + '\n';
-        if (izinliGunler.length > 0) {
-            msgText += `\n🚫 İzinli Günler:\n` + izinliGunler.join('\n');
-        }
+            `📍 Gelecek Hafta (${gelecekHaftaNo}. hafta):\n👨‍⚕️ Nöbetçi: ${gelecekHaftaNobetci ? gelecekHaftaNobetci.name : '-'}\n` +
+            izinliBuHaftaText + izinliGelecekHaftaText;
+
         botInstance.sendMessage(chatId, msgText, { parse_mode: 'Markdown' });
     } catch (error) {
         botInstance.sendMessage(chatId, "❌ Gelecek hafta nöbetçi bilgisi alınırken hata oluştu.");
