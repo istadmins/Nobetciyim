@@ -407,3 +407,8 @@ footer {
     margin: 5px 0;
   }
 }
+
+#izinlerTablosu th, #izinlerTablosu td {
+  vertical-align: middle !important;
+  text-align: left !important;
+}
