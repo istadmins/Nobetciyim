@@ -66,20 +66,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   function renderIzinlerTable(izinler) {
     const tbody = document.querySelector('#izinlerTablosu tbody');
     tbody.innerHTML = '';
-    // Yardımcı: ISO -> DD.MM.YYYY
-    function toTurkishDate(iso) {
+    // Yardımcı: ISO -> DD.MM.YYYY SS:dd
+    function toTurkishDateTime(iso) {
         const d = new Date(iso);
         const gun = String(d.getDate()).padStart(2, '0');
         const ay = String(d.getMonth() + 1).padStart(2, '0');
         const yil = d.getFullYear();
-        return `${gun}.${ay}.${yil}`;
+        const saat = String(d.getHours()).padStart(2, '0');
+        const dakika = String(d.getMinutes()).padStart(2, '0');
+        return `${gun}.${ay}.${yil} ${saat}:${dakika}`;
     }
     izinler.forEach(izin => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>${izin.nobetci_adi || ''}</td>
-        <td>${toTurkishDate(izin.baslangic_tarihi)}</td>
-        <td>${toTurkishDate(izin.bitis_tarihi)}</td>
+        <td>${toTurkishDateTime(izin.baslangic_tarihi)}</td>
+        <td>${toTurkishDateTime(izin.bitis_tarihi)}</td>
         <td>${izin.gunduz_yedek_adi || ''}</td>
         <td>${izin.gece_yedek_adi || ''}</td>
         <td>
