@@ -130,7 +130,6 @@ Merhaba ${guncelNobetci.name},
             const message = `👨‍⚕️ *Aktif Nöbetçi:* ${aktifNobetci.name}`;
             botInstance.sendMessage(chatId, message, { parse_mode: 'Markdown' });
         } catch (error) {
-            console.error("/aktif_nobetci hatası:", error);
             botInstance.sendMessage(chatId, "❌ Aktif nöbetçi bilgisi alınırken hata oluştu.");
         }
     });
@@ -360,7 +359,7 @@ Merhaba ${guncelNobetci.name},
     });
 
 
-// GELECEK HAFTA NÖBETÇİ komutu (sadece bu hafta nöbetçi bilgisi kaldırıldı)
+// GELECEK HAFTA NÖBETÇİ komutu
 botInstance.onText(/^\/gelecek_hafta_nobetci$/, async (msg) => {
     const chatId = msg.chat.id;
     const nobetciYetkili = await getAuthorizedNobetciByTelegramId(chatId);
@@ -399,40 +398,27 @@ botInstance.onText(/^\/gelecek_hafta_nobetci$/, async (msg) => {
         const sundayNextWeek = new Date(mondayThisWeek);
         sundayNextWeek.setDate(mondayThisWeek.getDate() + 13);
         sundayNextWeek.setHours(23, 59, 59, 999);
-        const izinler = await db.getIzinlerForDateRange(
-            mondayThisWeek.toISOString(),
-            sundayNextWeek.toISOString()
-        );
-        // DEBUG: Tarih aralığı ve izinli isimlerini mesajda göster
-        let debugInfo = `\n\n[DEBUG]\nBaşlangıç: ${mondayThisWeek.toISOString()}\nBitiş: ${sundayNextWeek.toISOString()}\nİzinli sayısı: ${izinler.length}`;
-        if (izinler.length > 0) {
-            debugInfo += '\nİsimler: ' + izinler.map(i => i.nobetci_adi).join(', ');
-        }
 
-        let message = `📅 Haftalık Nöbetçi Bilgileri\n\n📍 Gelecek Hafta (${gelecekHaftaNo}. hafta):\n👨‍⚕️ Nöbetçi: ${gelecekHaftaNobetci ? gelecekHaftaNobetci.name : 'Belirlenemedi'}`;
+        const izinler = await db.getIzinlerForDateRange(mondayThisWeek.toISOString(), sundayNextWeek.toISOString());
+        let izinliGelecekHafta = izinler.filter(i => {
+            const bas = new Date(i.baslangic_tarihi);
+            const bit = new Date(i.bitis_tarihi);
+            return (
+                (bas <= gelecekHaftaSonu && bit >= gelecekHaftaBasi)
+            );
+        });
 
-        // Açıklamaları ekle
-        if (buHaftaAciklama && buHaftaAciklama.aciklama) {
-            message += `\n\n📝 Bu Hafta Açıklaması:\n${buHaftaAciklama.aciklama}`;
-        }
+        let izinliText = izinliGelecekHafta.length > 0
+            ? `\n🚫 *Gelecek Hafta İzinli Olanlar:*\n` + izinliGelecekHafta.map(i => `• ${i.nobetci_adi} (${i.baslangic_tarihi.slice(0,10)} - ${i.bitis_tarihi.slice(0,10)})`).join("\n")
+            : "";
 
-        if (gelecekHaftaAciklama && gelecekHaftaAciklama.aciklama) {
-            message += `\n\n📝 Gelecek Hafta Açıklaması:\n${gelecekHaftaAciklama.aciklama}`;
-        }
+        let msgText = `📅 *Haftalık Nöbetçi Bilgileri*\n\n` +
+            `📍 Gelecek Hafta (${gelecekHaftaNo}. hafta):\n👨‍⚕️ Nöbetçi: ${gelecekHaftaNobetci ? gelecekHaftaNobetci.name : '-'}\n` +
+            izinliText;
 
-        // İzinli nöbetçileri ekle
-        if (izinler && izinler.length > 0) {
-            message += `\n\n🚫 *Gelecek Hafta İzinli Olanlar:*\n`;
-            izinler.forEach(izin => {
-                message += `• ${izin.nobetci_adi} (${izin.baslangic_tarihi.slice(0,10)} - ${izin.bitis_tarihi.slice(0,10)})\n`;
-            });
-        }
-        message += debugInfo;
-
-        botInstance.sendMessage(chatId, message, { parse_mode: 'Markdown' });
+        botInstance.sendMessage(chatId, msgText, { parse_mode: 'Markdown' });
     } catch (error) {
-        console.error("/gelecek_hafta_nobetci hatası:", error);
-        botInstance.sendMessage(chatId, "❌ Bilgi alınırken bir hata oluştu.");
+        botInstance.sendMessage(chatId, "❌ Gelecek hafta nöbetçi bilgisi alınırken hata oluştu.");
     }
 });
 

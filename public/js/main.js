@@ -108,10 +108,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function showIzinForm(nobetciList, izin = null) {
     const formDiv = document.getElementById('izinFormu');
+    // Seçili nöbetçi kimse, yedek dropdownlarında onu çıkar
+    let selectedNobetciId = izin ? izin.nobetci_id : null;
     formDiv.innerHTML = `
         <form id="izinEkleForm">
             <label>Nöbetçi:
-                <select name="nobetci_id" required>
+                <select name="nobetci_id" required id="izinNobetciSelect">
                     <option value="">Seçiniz</option>
                     ${nobetciList.map(n => `<option value="${n.id}"${izin && n.id == izin.nobetci_id ? ' selected' : ''}>${n.name}</option>`).join('')}
                 </select>
@@ -123,15 +125,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <input type="datetime-local" name="bitis_tarihi" required value="${izin ? izin.bitis_tarihi.replace('T', 'T').slice(0,16) : ''}">
             </label>
             <label>Gündüz Yedek:
-                <select name="gunduz_yedek_id">
+                <select name="gunduz_yedek_id" required id="gunduzYedekSelect">
                     <option value="">Seçiniz</option>
-                    ${nobetciList.map(n => `<option value="${n.id}"${izin && n.id == izin.gunduz_yedek_id ? ' selected' : ''}>${n.name}</option>`).join('')}
+                    ${nobetciList.filter(n => n.id != selectedNobetciId).map(n => `<option value="${n.id}"${izin && n.id == izin.gunduz_yedek_id ? ' selected' : ''}>${n.name}</option>`).join('')}
                 </select>
             </label>
             <label>Gece Yedek:
-                <select name="gece_yedek_id">
+                <select name="gece_yedek_id" required id="geceYedekSelect">
                     <option value="">Seçiniz</option>
-                    ${nobetciList.map(n => `<option value="${n.id}"${izin && n.id == izin.gece_yedek_id ? ' selected' : ''}>${n.name}</option>`).join('')}
+                    ${nobetciList.filter(n => n.id != selectedNobetciId).map(n => `<option value="${n.id}"${izin && n.id == izin.gece_yedek_id ? ' selected' : ''}>${n.name}</option>`).join('')}
                 </select>
             </label>
             <button type="submit" class="btn btn-success">Kaydet</button>
@@ -140,10 +142,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     `;
     formDiv.style.display = '';
     document.getElementById('izinFormKapatBtn').onclick = () => { formDiv.style.display = 'none'; };
+    // Nöbetçi değişirse yedek dropdownlarını güncelle
+    document.getElementById('izinNobetciSelect').onchange = function() {
+        const seciliId = this.value;
+        const gunduzYedekSelect = document.getElementById('gunduzYedekSelect');
+        const geceYedekSelect = document.getElementById('geceYedekSelect');
+        [gunduzYedekSelect, geceYedekSelect].forEach(select => {
+            Array.from(select.options).forEach(opt => {
+                opt.disabled = (opt.value === seciliId && opt.value !== '');
+            });
+            // Eğer seçili yedek, yeni nöbetçiyle aynıysa sıfırla
+            if (select.value === seciliId) select.value = '';
+        });
+    };
     document.getElementById('izinEkleForm').onsubmit = async function(e) {
         e.preventDefault();
         const formData = new FormData(this);
         const data = Object.fromEntries(formData.entries());
+        // Validasyon: yedekler seçili mi ve nöbetçiyle aynı mı?
+        if (!data.gunduz_yedek_id || !data.gece_yedek_id) {
+            alert('Gündüz ve gece yedek nöbetçi seçmek zorunludur!');
+            return;
+        }
+        if (data.nobetci_id === data.gunduz_yedek_id || data.nobetci_id === data.gece_yedek_id) {
+            alert('İzinli nöbetçi kendisi yedek olarak seçilemez!');
+            return;
+        }
         if (izin && izin.id) {
             await fetch(`/api/nobetci/izinler/${izin.id}`, {
                 method: 'PUT',

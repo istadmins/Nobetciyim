@@ -47,16 +47,12 @@ async function getAsilHaftalikNobetci(date) {
     try {
         const yil = date.getFullYear();
         const hafta = getWeekOfYear(date);
-        
-        console.log(`[DEBUG] getAsilHaftalikNobetci çağrıldı: ${date.toISOString()}, Yıl: ${yil}, Hafta: ${hafta}`);
 
         // ÖNCELİK 1: Manuel atama (override) var mı diye kontrol et.
         if (typeof db.getDutyOverride === 'function') {
             const override = await db.getDutyOverride(yil, hafta);
             if (override && override.nobetci_id_override) {
-                console.log(`[DEBUG] Manuel atama bulundu: ID ${override.nobetci_id_override}`);
                 const nobetci = await db.getNobetciById(override.nobetci_id_override);
-                console.log(`[DEBUG] Manuel atanan nöbetçi:`, nobetci);
                 return nobetci;
             }
         }
@@ -69,29 +65,17 @@ async function getAsilHaftalikNobetci(date) {
         weekEnd.setDate(weekEnd.getDate() + 6); // Pazar
         weekEnd.setHours(23,59,59,999);
         const izinliNobetciIdleri = await db.getIzinliNobetciIdleri(weekStart.toISOString(), weekEnd.toISOString());
-        console.log(`[DEBUG] İzinli nöbetçi id'leri:`, izinliNobetciIdleri);
 
-        // ÖNCELİK 2: Nöbet sıralama ayarlarını kontrol et
         const nobetSiralamaAyarlari = await getNobetSiralamaAyarlari();
-        console.log(`[DEBUG] Nöbet sıralama ayarları:`, nobetSiralamaAyarlari);
-
         const nobetciler = await getAllNobetcilerFromDB();
-        console.log(`[DEBUG] Toplam nöbetçi sayısı: ${nobetciler.length}`);
-        
         if (!nobetciler || nobetciler.length === 0) {
-            console.error("[Asil Nobetci] Sistemde kayıtlı nöbetçi bulunamadı.");
             return null;
         }
 
         let nobetciIndex;
-
-        // Nöbet sıralama ayarları aktif mi ve bu hafta için geçerli mi?
         if (nobetSiralamaAyarlari.aktif &&
             (yil > nobetSiralamaAyarlari.baslangicYili ||
              (yil === nobetSiralamaAyarlari.baslangicYili && hafta >= nobetSiralamaAyarlari.baslangicHaftasi))) {
-            
-            console.log(`[DEBUG] Nöbet sıralama ayarları kullanılıyor`);
-            
             let haftalarFarki = 0;
             if (yil === nobetSiralamaAyarlari.baslangicYili) {
                 haftalarFarki = hafta - nobetSiralamaAyarlari.baslangicHaftasi;
@@ -104,13 +88,10 @@ async function getAsilHaftalikNobetci(date) {
                 haftalarFarki += hafta;
             }
             nobetciIndex = (nobetSiralamaAyarlari.baslangicNobetciIndex + haftalarFarki) % nobetciler.length;
-            console.log(`[DEBUG] Sıralama hesaplaması: Haftalar farkı=${haftalarFarki}, Index=${nobetciIndex}`);
         } else {
-            // ÖNCELİK 3: Basit ve güvenilir rotasyon: (hafta numarası - 1) % nöbetçi sayısı
             const yearStartDateForWeekCalc = new Date(yil, 0, 1);
             const weeksSinceYearStart = hafta - getWeekOfYear(yearStartDateForWeekCalc) + 1;
             nobetciIndex = (weeksSinceYearStart - 1 + nobetciler.length) % nobetciler.length;
-            console.log(`[DEBUG] Basit rotasyon: Yıl başından haftalar=${weeksSinceYearStart}, Index=${nobetciIndex}`);
         }
 
         // İzinli olmayan ilk nöbetçiyi bul
@@ -125,16 +106,44 @@ async function getAsilHaftalikNobetci(date) {
             deneme++;
         }
 
-        if (!asilNobetci) {
-            console.error(`[Asil Nobetci] O hafta için izinli olmayan nöbetçi bulunamadı!`);
-            return null;
+        // Eğer asil nöbetçi izinliyse, o gün ve saat için yedek ata
+        if (asilNobetci && izinliNobetciIdleri.includes(asilNobetci.id)) {
+            // O gün ve saat için izin kaydını bul
+            const izinler = await db.getIzinliNobetciVeYedekleri(date);
+            const izinKaydi = izinler.find(i => i.nobetci_id === asilNobetci.id);
+            if (izinKaydi) {
+                // Gündüz/gece saatini belirle
+                const shiftRanges = await db.getShiftTimeRanges();
+                let isGunduz = true;
+                if (shiftRanges && shiftRanges.length > 1) {
+                    // Gündüz: ilk vardiya, Gece: ikinci vardiya
+                    const nowHour = date.getHours();
+                    const gunduzBas = parseInt(shiftRanges[0].baslangic_saat.split(":")[0], 10);
+                    const gunduzBit = parseInt(shiftRanges[0].bitis_saat.split(":")[0], 10);
+                    if (gunduzBas <= nowHour && nowHour < gunduzBit) {
+                        isGunduz = true;
+                    } else {
+                        isGunduz = false;
+                    }
+                }
+                let yedekId = null;
+                if (isGunduz && izinKaydi.gunduz_yedek_id) {
+                    yedekId = izinKaydi.gunduz_yedek_id;
+                } else if (!isGunduz && izinKaydi.gece_yedek_id) {
+                    yedekId = izinKaydi.gece_yedek_id;
+                }
+                if (yedekId) {
+                    const yedekNobetci = await db.getNobetciById(yedekId);
+                    if (yedekNobetci) return yedekNobetci;
+                }
+            }
         }
 
-        console.log(`[Asil Nobetci] Nöbetçi belirlendi: Yıl ${yil}, Hafta ${hafta} -> ${asilNobetci.name}`);
+        if (!asilNobetci) {
+            return null;
+        }
         return asilNobetci;
-
     } catch (error) {
-        console.error("[Asil Nobetci] Asıl haftalık nöbetçi belirlenirken kritik hata oluştu:", error);
         return null;
     }
 }

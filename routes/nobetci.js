@@ -320,6 +320,12 @@ router.get('/izinler', (req, res) => {
 // Yeni izin ekle
 router.post('/izinler', (req, res) => {
   const { nobetci_id, baslangic_tarihi, bitis_tarihi, gunduz_yedek_id, gece_yedek_id } = req.body;
+  if (!gunduz_yedek_id || !gece_yedek_id) {
+    return res.status(400).json({ error: 'Gündüz ve gece yedek nöbetçi seçmek zorunludur!' });
+  }
+  if (nobetci_id === gunduz_yedek_id || nobetci_id === gece_yedek_id) {
+    return res.status(400).json({ error: 'İzinli nöbetçi kendisi yedek olarak seçilemez!' });
+  }
   db.run(`INSERT INTO nobetci_izinleri (nobetci_id, baslangic_tarihi, bitis_tarihi, gunduz_yedek_id, gece_yedek_id)
           VALUES (?, ?, ?, ?, ?)`,
     [nobetci_id, baslangic_tarihi, bitis_tarihi, gunduz_yedek_id, gece_yedek_id],
@@ -340,6 +346,12 @@ router.delete('/izinler/:id', (req, res) => {
 // İzin güncelle
 router.put('/izinler/:id', (req, res) => {
   const { nobetci_id, baslangic_tarihi, bitis_tarihi, gunduz_yedek_id, gece_yedek_id } = req.body;
+  if (!gunduz_yedek_id || !gece_yedek_id) {
+    return res.status(400).json({ error: 'Gündüz ve gece yedek nöbetçi seçmek zorunludur!' });
+  }
+  if (nobetci_id === gunduz_yedek_id || nobetci_id === gece_yedek_id) {
+    return res.status(400).json({ error: 'İzinli nöbetçi kendisi yedek olarak seçilemez!' });
+  }
   db.run(`UPDATE nobetci_izinleri SET nobetci_id = ?, baslangic_tarihi = ?, bitis_tarihi = ?, gunduz_yedek_id = ?, gece_yedek_id = ? WHERE id = ?`,
     [nobetci_id, baslangic_tarihi, bitis_tarihi, gunduz_yedek_id, gece_yedek_id, req.params.id],
     function(err) {

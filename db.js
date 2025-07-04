@@ -234,4 +234,30 @@ db.getIzinlerForDateRange = function(baslangicTarihi, bitisTarihi) {
     });
 };
 
+db.getIzinliNobetciVeYedekleri = function(date) {
+    return new Promise((resolve, reject) => {
+        // date: Date nesnesi veya ISO string
+        let isoDate;
+        if (date instanceof Date) {
+            isoDate = date.toISOString();
+        } else {
+            isoDate = new Date(date).toISOString();
+        }
+        db.all(
+            `SELECT i.*, n1.name as nobetci_adi, n2.name as gunduz_yedek_adi, n3.name as gece_yedek_adi
+             FROM nobetci_izinleri i
+             LEFT JOIN Nobetciler n1 ON i.nobetci_id = n1.id
+             LEFT JOIN Nobetciler n2 ON i.gunduz_yedek_id = n2.id
+             LEFT JOIN Nobetciler n3 ON i.gece_yedek_id = n3.id
+             WHERE i.baslangic_tarihi <= ? AND i.bitis_tarihi >= ?
+             ORDER BY i.baslangic_tarihi ASC`,
+            [isoDate, isoDate],
+            (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows);
+            }
+        );
+    });
+};
+
 module.exports = db;
