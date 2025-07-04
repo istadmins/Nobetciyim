@@ -395,6 +395,12 @@ botInstance.onText(/^\/gelecek_hafta_nobetci$/, async (msg) => {
             new Date(gelecekHaftaSonu.getFullYear(), gelecekHaftaSonu.getMonth(), gelecekHaftaSonu.getDate(), 23, 59, 59, 999).toISOString()
         );
 
+        // DEBUG: Tarih aralığı ve izinli isimlerini mesajda göster
+        let debugInfo = `\n\n[DEBUG]\nBaşlangıç: ${gelecekHaftaBasi.toISOString()}\nBitiş: ${gelecekHaftaSonu.toISOString()}\nİzinli sayısı: ${izinler.length}`;
+        if (izinler.length > 0) {
+            debugInfo += '\nİsimler: ' + izinler.map(i => i.nobetci_adi).join(', ');
+        }
+
         let message = `📅 Haftalık Nöbetçi Bilgileri\n\n📍 Gelecek Hafta (${gelecekHaftaNo}. hafta):\n👨‍⚕️ Nöbetçi: ${gelecekHaftaNobetci ? gelecekHaftaNobetci.name : 'Belirlenemedi'}`;
 
         // Açıklamaları ekle
@@ -413,6 +419,7 @@ botInstance.onText(/^\/gelecek_hafta_nobetci$/, async (msg) => {
                 message += `• ${izin.nobetci_adi} (${izin.baslangic_tarihi.slice(0,10)} - ${izin.bitis_tarihi.slice(0,10)})\n`;
             });
         }
+        message += debugInfo;
 
         botInstance.sendMessage(chatId, message, { parse_mode: 'Markdown' });
     } catch (error) {
