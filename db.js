@@ -215,4 +215,23 @@ db.getIzinliNobetciIdleri = function(baslangicTarihi, bitisTarihi) {
     });
 };
 
+db.getIzinlerForDateRange = function(baslangicTarihi, bitisTarihi) {
+    return new Promise((resolve, reject) => {
+        db.all(
+            `SELECT i.*, n1.name as nobetci_adi, n2.name as gunduz_yedek_adi, n3.name as gece_yedek_adi
+             FROM nobetci_izinleri i
+             LEFT JOIN Nobetciler n1 ON i.nobetci_id = n1.id
+             LEFT JOIN Nobetciler n2 ON i.gunduz_yedek_id = n2.id
+             LEFT JOIN Nobetciler n3 ON i.gece_yedek_id = n3.id
+             WHERE NOT (i.bitis_tarihi <= ? OR i.baslangic_tarihi >= ?)
+             ORDER BY i.baslangic_tarihi ASC`,
+            [baslangicTarihi, bitisTarihi],
+            (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows);
+            }
+        );
+    });
+};
+
 module.exports = db;

@@ -371,16 +371,10 @@ botInstance.onText(/^\/gelecek_hafta_nobetci$/, async (msg) => {
     
     try {
         const today = new Date();
-        console.log(`[DEBUG] Bugün: ${today.toISOString()}, Gün: ${today.getDay()}`);
-        
         // Web takvimindeki algoritma ile aynı hesaplama
         const gelecekHaftaBasi = new Date(today.getFullYear(), today.getMonth(), today.getDate() - today.getDay() + 1 + 7);
-        console.log(`[DEBUG] Gelecek hafta başı (web algoritması): ${gelecekHaftaBasi.toISOString()}`);
-        
-        // Dosyaya da log yazalım
-        const fs = require('fs');
-        const logMessage = `[${new Date().toISOString()}] DEBUG: Bugün: ${today.toISOString()}, Gün: ${today.getDay()}, Gelecek hafta: ${gelecekHaftaBasi.toISOString()}\n`;
-        fs.appendFileSync('telegram_debug.log', logMessage);
+        const gelecekHaftaSonu = new Date(gelecekHaftaBasi);
+        gelecekHaftaSonu.setDate(gelecekHaftaBasi.getDate() + 6);
 
         const gelecekHaftaNobetci = await getAsilHaftalikNobetci(gelecekHaftaBasi);
         const buHaftaNobetci = await getAsilHaftalikNobetci(today);
@@ -395,17 +389,13 @@ botInstance.onText(/^\/gelecek_hafta_nobetci$/, async (msg) => {
         const gelecekHaftaNo = getWeekOfYear(gelecekHaftaBasi);
         const gelecekHaftaAciklama = await db.getDutyOverride(gelecekHaftaYil, gelecekHaftaNo);
 
-        console.log(`[DEBUG] Bu hafta: ${buHaftaNo}. hafta, Gelecek hafta: ${gelecekHaftaNo}. hafta`);
-        console.log(`[DEBUG] Bu hafta nöbetçi: ${buHaftaNobetci?.name}, Gelecek hafta nöbetçi: ${gelecekHaftaNobetci?.name}`);
-        
-        // Dosyaya da log yazalım
-        const logMessage2 = `[${new Date().toISOString()}] DEBUG: Bu hafta: ${buHaftaNo}. hafta, Gelecek hafta: ${gelecekHaftaNo}. hafta, Bu hafta nöbetçi: ${buHaftaNobetci?.name}, Gelecek hafta nöbetçi: ${gelecekHaftaNobetci?.name}\n`;
-        fs.appendFileSync('telegram_debug.log', logMessage2);
+        // --- İzinli nöbetçileri çek ---
+        const izinler = await db.getIzinlerForDateRange(
+            gelecekHaftaBasi.toISOString(),
+            new Date(gelecekHaftaSonu.getFullYear(), gelecekHaftaSonu.getMonth(), gelecekHaftaSonu.getDate(), 23, 59, 59, 999).toISOString()
+        );
 
-        let message = `📅 Haftalık Nöbetçi Bilgileri
-
-📍 Gelecek Hafta (${gelecekHaftaNo}. hafta):
-👨‍⚕️ Nöbetçi: ${gelecekHaftaNobetci ? gelecekHaftaNobetci.name : 'Belirlenemedi'}`;
+        let message = `📅 Haftalık Nöbetçi Bilgileri\n\n📍 Gelecek Hafta (${gelecekHaftaNo}. hafta):\n👨‍⚕️ Nöbetçi: ${gelecekHaftaNobetci ? gelecekHaftaNobetci.name : 'Belirlenemedi'}`;
 
         // Açıklamaları ekle
         if (buHaftaAciklama && buHaftaAciklama.aciklama) {
@@ -416,7 +406,15 @@ botInstance.onText(/^\/gelecek_hafta_nobetci$/, async (msg) => {
             message += `\n\n📝 Gelecek Hafta Açıklaması:\n${gelecekHaftaAciklama.aciklama}`;
         }
 
-        botInstance.sendMessage(chatId, message);
+        // İzinli nöbetçileri ekle
+        if (izinler && izinler.length > 0) {
+            message += `\n\n🚫 *Gelecek Hafta İzinli Olanlar:*\n`;
+            izinler.forEach(izin => {
+                message += `• ${izin.nobetci_adi} (${izin.baslangic_tarihi.slice(0,10)} - ${izin.bitis_tarihi.slice(0,10)})\n`;
+            });
+        }
+
+        botInstance.sendMessage(chatId, message, { parse_mode: 'Markdown' });
     } catch (error) {
         console.error("/gelecek_hafta_nobetci hatası:", error);
         botInstance.sendMessage(chatId, "❌ Bilgi alınırken bir hata oluştu.");
