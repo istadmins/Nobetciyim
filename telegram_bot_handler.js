@@ -390,13 +390,21 @@ botInstance.onText(/^\/gelecek_hafta_nobetci$/, async (msg) => {
         const gelecekHaftaAciklama = await db.getDutyOverride(gelecekHaftaYil, gelecekHaftaNo);
 
         // --- İzinli nöbetçileri çek ---
+        // Bu haftanın Pazartesi'si 00:00
+        const dayOfWeek = today.getDay(); // 0: Pazar, 1: Pazartesi, ...
+        const mondayThisWeek = new Date(today);
+        mondayThisWeek.setDate(today.getDate() - ((dayOfWeek + 6) % 7));
+        mondayThisWeek.setHours(0, 0, 0, 0);
+        // Gelecek haftanın Pazar'ı 23:59:59
+        const sundayNextWeek = new Date(mondayThisWeek);
+        sundayNextWeek.setDate(mondayThisWeek.getDate() + 13);
+        sundayNextWeek.setHours(23, 59, 59, 999);
         const izinler = await db.getIzinlerForDateRange(
-            gelecekHaftaBasi.toISOString(),
-            new Date(gelecekHaftaSonu.getFullYear(), gelecekHaftaSonu.getMonth(), gelecekHaftaSonu.getDate(), 23, 59, 59, 999).toISOString()
+            mondayThisWeek.toISOString(),
+            sundayNextWeek.toISOString()
         );
-
         // DEBUG: Tarih aralığı ve izinli isimlerini mesajda göster
-        let debugInfo = `\n\n[DEBUG]\nBaşlangıç: ${gelecekHaftaBasi.toISOString()}\nBitiş: ${gelecekHaftaSonu.toISOString()}\nİzinli sayısı: ${izinler.length}`;
+        let debugInfo = `\n\n[DEBUG]\nBaşlangıç: ${mondayThisWeek.toISOString()}\nBitiş: ${sundayNextWeek.toISOString()}\nİzinli sayısı: ${izinler.length}`;
         if (izinler.length > 0) {
             debugInfo += '\nİsimler: ' + izinler.map(i => i.nobetci_adi).join(', ');
         }
