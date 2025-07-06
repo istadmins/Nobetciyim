@@ -406,9 +406,16 @@ botInstance.onText(/^\/gelecek_hafta_nobetci$/, async (msg) => {
             return `${gun}.${ay}.${yil} ${saat}:${dakika}`;
         }
 
+        let debugText = `\n\n[DEBUG] Yıl: ${gelecekHaftaYil}, Hafta: ${gelecekHaftaNo}`;
+        if (gelecekHaftaAciklama && gelecekHaftaAciklama.nobetci_id_override) {
+            debugText += `\n[DEBUG] Manuel Atama (Override): ${gelecekHaftaAciklama.nobetci_adi_override || gelecekHaftaAciklama.nobetci_id_override}`;
+        } else {
+            debugText += `\n[DEBUG] Manuel Atama (Override): Yok`;
+        }
+
         let msgText = `📅 *Haftalık Nöbetçi Bilgileri*\n\n` +
             `📍 Gelecek Hafta (${gelecekHaftaNo}. hafta):\n👨‍⚕️ Nöbetçi: ${gelecekHaftaNobetci ? gelecekHaftaNobetci.name : '-'}\n` +
-            izinliGelecekHaftaText + aciklamaText;
+            izinliGelecekHaftaText + aciklamaText + debugText;
 
         botInstance.sendMessage(chatId, msgText, { parse_mode: 'Markdown' });
     } catch (error) {
