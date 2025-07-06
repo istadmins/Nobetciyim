@@ -363,29 +363,33 @@ Merhaba ${guncelNobetci.name},
 botInstance.onText(/^\/gelecek_hafta_nobetci$/, async (msg) => {
     const chatId = msg.chat.id;
     const nobetciYetkili = await getAuthorizedNobetciByTelegramId(chatId);
-    
     if (!nobetciYetkili) {
         return botInstance.sendMessage(chatId, "❌ Bu komutu kullanma yetkiniz bulunmamaktadır.");
     }
-    
     try {
         const today = new Date();
-        const gelecekHaftaBasi = new Date(today.getFullYear(), today.getMonth(), today.getDate() - today.getDay() + 1 + 7);
+        // Haftanın başı: gelecek haftanın Pazartesi 00:00
+        const dayOfWeek = today.getDay(); // 0: Pazar, 1: Pazartesi, ...
+        const gelecekHaftaBasi = new Date(today);
+        gelecekHaftaBasi.setDate(today.getDate() - ((dayOfWeek + 6) % 7) + 7); // gelecek haftanın Pazartesi
+        gelecekHaftaBasi.setHours(0, 0, 0, 0);
         const gelecekHaftaSonu = new Date(gelecekHaftaBasi);
-        gelecekHaftaSonu.setDate(gelecekHaftaBasi.getDate() + 6);
+        gelecekHaftaSonu.setDate(gelecekHaftaBasi.getDate() + 6); // Pazar
+        gelecekHaftaSonu.setHours(23, 59, 59, 999);
 
+        // Haftanın nöbetçisini belirle (override, sıralama, izinli/ye yedek mantığı ile)
         const gelecekHaftaNobetci = await getAsilHaftalikNobetci(gelecekHaftaBasi);
         const gelecekHaftaYil = gelecekHaftaBasi.getFullYear();
         const gelecekHaftaNo = getWeekOfYear(gelecekHaftaBasi);
         const gelecekHaftaAciklama = await db.getDutyOverride(gelecekHaftaYil, gelecekHaftaNo);
 
-        // --- İzinli nöbetçileri çek ---
+        // Sadece o haftanın izinlileri
         const izinler = await db.getIzinlerForDateRange(gelecekHaftaBasi.toISOString(), gelecekHaftaSonu.toISOString());
         let izinliGelecekHaftaText = izinler.length > 0
             ? `\n🚫 *Gelecek Hafta İzinli Olanlar:*\n` + izinler.map(i => `• ${i.nobetci_adi} (${toTurkishDateTime(i.baslangic_tarihi)} - ${toTurkishDateTime(i.bitis_tarihi)})`).join("\n")
             : "";
 
-        // --- Açıklama (remark) ekle ---
+        // Açıklama (remark)
         let aciklamaText = "";
         if (gelecekHaftaAciklama && gelecekHaftaAciklama.aciklama) {
             aciklamaText = `\n📝 *Açıklama:* ${gelecekHaftaAciklama.aciklama}`;
