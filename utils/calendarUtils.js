@@ -57,14 +57,16 @@ async function getAsilHaftalikNobetci(date) {
             }
         }
 
-        // İzinli nöbetçileri bul (haftanın başı ve sonu)
+        // Haftanın başı ve sonu
         const weekStart = new Date(date);
         weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1); // Pazartesi
         weekStart.setHours(0,0,0,0);
         const weekEnd = new Date(weekStart);
         weekEnd.setDate(weekEnd.getDate() + 6); // Pazar
         weekEnd.setHours(23,59,59,999);
-        const izinliNobetciIdleri = await db.getIzinliNobetciIdleri(weekStart.toISOString(), weekEnd.toISOString());
+
+        // Haftanın tüm izinlerini çek
+        const izinler = await db.getIzinlerForDateRange(weekStart.toISOString(), weekEnd.toISOString());
 
         const nobetSiralamaAyarlari = await getNobetSiralamaAyarlari();
         const nobetciler = await getAllNobetcilerFromDB();
@@ -94,54 +96,27 @@ async function getAsilHaftalikNobetci(date) {
             nobetciIndex = (weeksSinceYearStart - 1 + nobetciler.length) % nobetciler.length;
         }
 
-        // İzinli olmayan ilk nöbetçiyi bul
-        let asilNobetci = null;
-        let deneme = 0;
-        while (deneme < nobetciler.length) {
-            const aday = nobetciler[(nobetciIndex + deneme) % nobetciler.length];
-            if (!izinliNobetciIdleri.includes(aday.id)) {
-                asilNobetci = aday;
-                break;
-            }
-            deneme++;
+        // Haftanın asıl nöbetçisi
+        const asilNobetci = nobetciler[nobetciIndex];
+        if (!asilNobetci) return null;
+
+        // Haftanın günlerinde kaç gün izinli?
+        let izinliGunler = 0;
+        for (let i = 0; i < 7; i++) {
+            const gun = new Date(weekStart);
+            gun.setDate(weekStart.getDate() + i);
+            gun.setHours(12,0,0,0); // Günü ortalamak için
+            const gunIzin = izinler.find(iz =>
+                iz.nobetci_id === asilNobetci.id &&
+                new Date(iz.baslangic_tarihi) <= gun &&
+                new Date(iz.bitis_tarihi) >= gun
+            );
+            if (gunIzin) izinliGunler++;
         }
 
-        // Eğer asil nöbetçi izinliyse, o gün ve saat için yedek ata
-        if (asilNobetci && izinliNobetciIdleri.includes(asilNobetci.id)) {
-            // O gün ve saat için izin kaydını bul
-            const izinler = await db.getIzinliNobetciVeYedekleri(date);
-            const izinKaydi = izinler.find(i => i.nobetci_id === asilNobetci.id);
-            if (izinKaydi) {
-                // Gündüz/gece saatini belirle
-                const shiftRanges = await db.getShiftTimeRanges();
-                let isGunduz = true;
-                if (shiftRanges && shiftRanges.length > 1) {
-                    // Gündüz: ilk vardiya, Gece: ikinci vardiya
-                    const nowHour = date.getHours();
-                    const gunduzBas = parseInt(shiftRanges[0].baslangic_saat.split(":")[0], 10);
-                    const gunduzBit = parseInt(shiftRanges[0].bitis_saat.split(":")[0], 10);
-                    if (gunduzBas <= nowHour && nowHour < gunduzBit) {
-                        isGunduz = true;
-                    } else {
-                        isGunduz = false;
-                    }
-                }
-                let yedekId = null;
-                if (isGunduz && izinKaydi.gunduz_yedek_id) {
-                    yedekId = izinKaydi.gunduz_yedek_id;
-                } else if (!isGunduz && izinKaydi.gece_yedek_id) {
-                    yedekId = izinKaydi.gece_yedek_id;
-                }
-                if (yedekId) {
-                    const yedekNobetci = await db.getNobetciById(yedekId);
-                    if (yedekNobetci) return yedekNobetci;
-                }
-            }
-        }
-
-        if (!asilNobetci) {
-            return null;
-        }
+        // Eğer 3 gün veya daha fazla izinliyse, haftalık nöbetçi yedek olmalı (değiştirmek istersen burayı kullanabilirsin)
+        // Ama planı bozmamak için, fonksiyon her zaman asil nöbetçiyi döndürmeli
+        // Sadece izinli olduğu günlerde yedek atanacak (günlük fonksiyonlarda)
         return asilNobetci;
     } catch (error) {
         return null;
