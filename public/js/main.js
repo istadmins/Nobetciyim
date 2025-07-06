@@ -76,8 +76,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const dakika = String(d.getMinutes()).padStart(2, '0');
         return `${gun}.${ay}.${yil} ${saat}:${dakika}`;
     }
-    // Sıralama: en yeni en üstte
-    izinler.sort((a, b) => new Date(b.baslangic_tarihi) - new Date(a.baslangic_tarihi));
+    // Sıralama: en eski en üstte
+    izinler.sort((a, b) => new Date(a.baslangic_tarihi) - new Date(b.baslangic_tarihi));
     izinler.forEach(izin => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
@@ -154,8 +154,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     `;
     formDiv.style.display = '';
     // Flatpickr başlat
-    flatpickr("#baslangic_tarihi_input", { enableTime: true, dateFormat: "d.m.Y H:i", locale: "tr" });
-    flatpickr("#bitis_tarihi_input", { enableTime: true, dateFormat: "d.m.Y H:i", locale: "tr" });
+    flatpickr("#baslangic_tarihi_input", { enableTime: true, dateFormat: "d.m.Y H:i", locale: "tr", allowInput: true });
+    flatpickr("#bitis_tarihi_input", { enableTime: true, dateFormat: "d.m.Y H:i", locale: "tr", allowInput: true });
+    // Input mask ekle
+    Inputmask("99.99.9999 99:99").mask("#baslangic_tarihi_input");
+    Inputmask("99.99.9999 99:99").mask("#bitis_tarihi_input");
     document.getElementById('izinFormKapatBtn').onclick = () => { formDiv.style.display = 'none'; };
     // Nöbetçi değişirse yedek dropdownlarını güncelle
     document.getElementById('izinNobetciSelect').onchange = function() {
