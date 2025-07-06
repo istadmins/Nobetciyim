@@ -76,6 +76,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const dakika = String(d.getMinutes()).padStart(2, '0');
         return `${gun}.${ay}.${yil} ${saat}:${dakika}`;
     }
+    // Sıralama: en yeni en üstte
+    izinler.sort((a, b) => new Date(b.baslangic_tarihi) - new Date(a.baslangic_tarihi));
     izinler.forEach(izin => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
@@ -129,10 +131,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </select>
             </label>
             <label>Başlangıç Tarihi:
-                <input type="datetime-local" name="baslangic_tarihi" required value="${izin ? izin.baslangic_tarihi.replace('T', 'T').slice(0,16) : ''}">
+                <input type="text" id="baslangic_tarihi_input" name="baslangic_tarihi" required value="${izin ? toTurkishDateTimeInputValue(izin.baslangic_tarihi) : ''}" placeholder="gg.aa.yyyy ss:dd">
             </label>
             <label>Bitiş Tarihi:
-                <input type="datetime-local" name="bitis_tarihi" required value="${izin ? izin.bitis_tarihi.replace('T', 'T').slice(0,16) : ''}">
+                <input type="text" id="bitis_tarihi_input" name="bitis_tarihi" required value="${izin ? toTurkishDateTimeInputValue(izin.bitis_tarihi) : ''}" placeholder="gg.aa.yyyy ss:dd">
             </label>
             <label>Gündüz Yedek:
                 <select name="gunduz_yedek_id" required id="gunduzYedekSelect">
@@ -151,6 +153,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         </form>
     `;
     formDiv.style.display = '';
+    // Flatpickr başlat
+    flatpickr("#baslangic_tarihi_input", { enableTime: true, dateFormat: "d.m.Y H:i", locale: "tr" });
+    flatpickr("#bitis_tarihi_input", { enableTime: true, dateFormat: "d.m.Y H:i", locale: "tr" });
     document.getElementById('izinFormKapatBtn').onclick = () => { formDiv.style.display = 'none'; };
     // Nöbetçi değişirse yedek dropdownlarını güncelle
     document.getElementById('izinNobetciSelect').onchange = function() {
@@ -178,6 +183,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             alert('İzinli nöbetçi kendisi yedek olarak seçilemez!');
             return;
         }
+        // Flatpickr ile gelen Türkçe formatı ISO'ya çevir
+        data.baslangic_tarihi = toISODateTime(data.baslangic_tarihi);
+        data.bitis_tarihi = toISODateTime(data.bitis_tarihi);
         if (izin && izin.id) {
             await fetch(`/api/nobetci/izinler/${izin.id}`, {
                 method: 'PUT',
@@ -194,6 +202,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         formDiv.style.display = 'none';
         loadIzinler();
     };
+  }
+
+  // Türkçe tarih formatını ISO'ya çeviren fonksiyon
+  function toISODateTime(dt) {
+    if (!dt) return '';
+    const [date, time] = dt.split(' ');
+    const [day, month, year] = date.split('.');
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${time || '00:00'}`;
+  }
+  // ISO'yu Türkçe input formatına çeviren fonksiyon
+  function toTurkishDateTimeInputValue(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    const gun = String(d.getDate()).padStart(2, '0');
+    const ay = String(d.getMonth() + 1).padStart(2, '0');
+    const yil = d.getFullYear();
+    const saat = String(d.getHours()).padStart(2, '0');
+    const dakika = String(d.getMinutes()).padStart(2, '0');
+    return `${gun}.${ay}.${yil} ${saat}:${dakika}`;
   }
 
   document.getElementById('izinEkleBtn').onclick = async function() {
