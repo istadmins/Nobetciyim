@@ -370,55 +370,26 @@ botInstance.onText(/^\/gelecek_hafta_nobetci$/, async (msg) => {
     
     try {
         const today = new Date();
-        // Web takvimindeki algoritma ile aynı hesaplama
         const gelecekHaftaBasi = new Date(today.getFullYear(), today.getMonth(), today.getDate() - today.getDay() + 1 + 7);
         const gelecekHaftaSonu = new Date(gelecekHaftaBasi);
         gelecekHaftaSonu.setDate(gelecekHaftaBasi.getDate() + 6);
 
         const gelecekHaftaNobetci = await getAsilHaftalikNobetci(gelecekHaftaBasi);
-        const buHaftaNobetci = await getAsilHaftalikNobetci(today);
-
-        // Bu haftanın bilgilerini al
-        const buHaftaYil = today.getFullYear();
-        const buHaftaNo = getWeekOfYear(today);
-        const buHaftaAciklama = await db.getDutyOverride(buHaftaYil, buHaftaNo);
-
-        // Gelecek haftanın bilgilerini al
         const gelecekHaftaYil = gelecekHaftaBasi.getFullYear();
         const gelecekHaftaNo = getWeekOfYear(gelecekHaftaBasi);
         const gelecekHaftaAciklama = await db.getDutyOverride(gelecekHaftaYil, gelecekHaftaNo);
 
         // --- İzinli nöbetçileri çek ---
-        // Bu haftanın Pazartesi'si 00:00
-        const dayOfWeek = today.getDay(); // 0: Pazar, 1: Pazartesi, ...
-        const mondayThisWeek = new Date(today);
-        mondayThisWeek.setDate(today.getDate() - ((dayOfWeek + 6) % 7));
-        mondayThisWeek.setHours(0, 0, 0, 0);
-        // Gelecek haftanın Pazar'ı 23:59:59
-        const sundayNextWeek = new Date(mondayThisWeek);
-        sundayNextWeek.setDate(mondayThisWeek.getDate() + 13);
-        sundayNextWeek.setHours(23, 59, 59, 999);
+        const izinler = await db.getIzinlerForDateRange(gelecekHaftaBasi.toISOString(), gelecekHaftaSonu.toISOString());
+        let izinliGelecekHaftaText = izinler.length > 0
+            ? `\n🚫 *Gelecek Hafta İzinli Olanlar:*\n` + izinler.map(i => `• ${i.nobetci_adi} (${toTurkishDateTime(i.baslangic_tarihi)} - ${toTurkishDateTime(i.bitis_tarihi)})`).join("\n")
+            : "";
 
-        const izinler = await db.getIzinlerForDateRange(mondayThisWeek.toISOString(), sundayNextWeek.toISOString());
-        // Bu haftanın izinlileri
-        const sundayThisWeek = new Date(mondayThisWeek);
-        sundayThisWeek.setDate(mondayThisWeek.getDate() + 6);
-        sundayThisWeek.setHours(23, 59, 59, 999);
-        let izinliBuHafta = izinler.filter(i => {
-            const bas = new Date(i.baslangic_tarihi);
-            const bit = new Date(i.bitis_tarihi);
-            return (
-                (bas <= sundayThisWeek && bit >= mondayThisWeek)
-            );
-        });
-        // Gelecek haftanın izinlileri
-        let izinliGelecekHafta = izinler.filter(i => {
-            const bas = new Date(i.baslangic_tarihi);
-            const bit = new Date(i.bitis_tarihi);
-            return (
-                (bas <= gelecekHaftaSonu && bit >= gelecekHaftaBasi)
-            );
-        });
+        // --- Açıklama (remark) ekle ---
+        let aciklamaText = "";
+        if (gelecekHaftaAciklama && gelecekHaftaAciklama.aciklama) {
+            aciklamaText = `\n📝 *Açıklama:* ${gelecekHaftaAciklama.aciklama}`;
+        }
 
         // Yardımcı: ISO -> DD.MM.YYYY SS:dd
         function toTurkishDateTime(iso) {
@@ -430,16 +401,10 @@ botInstance.onText(/^\/gelecek_hafta_nobetci$/, async (msg) => {
             const dakika = String(d.getMinutes()).padStart(2, '0');
             return `${gun}.${ay}.${yil} ${saat}:${dakika}`;
         }
-        let izinliBuHaftaText = izinliBuHafta.length > 0
-            ? `\n🚫 *Bu Hafta İzinli Olanlar:*\n` + izinliBuHafta.map(i => `• ${i.nobetci_adi} (${toTurkishDateTime(i.baslangic_tarihi)} - ${toTurkishDateTime(i.bitis_tarihi)})`).join("\n")
-            : "";
-        let izinliGelecekHaftaText = izinliGelecekHafta.length > 0
-            ? `\n🚫 *Gelecek Hafta İzinli Olanlar:*\n` + izinliGelecekHafta.map(i => `• ${i.nobetci_adi} (${toTurkishDateTime(i.baslangic_tarihi)} - ${toTurkishDateTime(i.bitis_tarihi)})`).join("\n")
-            : "";
 
         let msgText = `📅 *Haftalık Nöbetçi Bilgileri*\n\n` +
             `📍 Gelecek Hafta (${gelecekHaftaNo}. hafta):\n👨‍⚕️ Nöbetçi: ${gelecekHaftaNobetci ? gelecekHaftaNobetci.name : '-'}\n` +
-            izinliBuHaftaText + izinliGelecekHaftaText;
+            izinliGelecekHaftaText + aciklamaText;
 
         botInstance.sendMessage(chatId, msgText, { parse_mode: 'Markdown' });
     } catch (error) {
