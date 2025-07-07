@@ -306,15 +306,22 @@ router.put('/pay-edilen-kredileri-guncelle', (req, res) => {
 
 // Tüm izinleri listele
 router.get('/izinler', (req, res) => {
-  db.all(`SELECT i.*, n1.name as nobetci_adi, n2.name as gunduz_yedek_adi, n3.name as gece_yedek_adi
-          FROM nobetci_izinleri i
-          LEFT JOIN Nobetciler n1 ON i.nobetci_id = n1.id
-          LEFT JOIN Nobetciler n2 ON i.gunduz_yedek_id = n2.id
-          LEFT JOIN Nobetciler n3 ON i.gece_yedek_id = n3.id
-          ORDER BY i.baslangic_tarihi DESC`, [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows);
-  });
+    const { baslangic, bitis } = req.query;
+    if (baslangic && bitis) {
+        db.getIzinlerForDateRange(baslangic, bitis)
+            .then(rows => res.json(rows))
+            .catch(err => res.status(500).json({ error: err.message }));
+    } else {
+        db.all(`SELECT i.*, n1.name as nobetci_adi, n2.name as gunduz_yedek_adi, n3.name as gece_yedek_adi
+                FROM nobetci_izinleri i
+                LEFT JOIN Nobetciler n1 ON i.nobetci_id = n1.id
+                LEFT JOIN Nobetciler n2 ON i.gunduz_yedek_id = n2.id
+                LEFT JOIN Nobetciler n3 ON i.gece_yedek_id = n3.id
+                ORDER BY i.baslangic_tarihi ASC`, [], (err, rows) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json(rows);
+        });
+    }
 });
 
 // Yeni izin ekle

@@ -27,6 +27,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // handleDrop içinde bunun bir kopyası kullanılacak.
     let draggedItemPayload = null;
 
+    let izinler = [];
+
     // --- API Çağrıları ---
     async function fetchResortConfig() {
         try {
@@ -199,6 +201,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         return 1 + Math.ceil((firstThursday - target) / (7 * 24 * 3600 * 1000));
     }
 
+    async function fetchIzinler(yil, ay) {
+        // Ayın başı ve sonu
+        const firstDay = new Date(yil, ay, 1);
+        const lastDay = new Date(yil, ay + 1, 0);
+        const baslangic = firstDay.toISOString();
+        const bitis = lastDay.toISOString();
+        try {
+            const response = await fetch(`/api/nobetci/izinler?baslangic=${baslangic}&bitis=${bitis}`, { headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }});
+            if (!response.ok) return [];
+            return await response.json();
+        } catch (e) { return []; }
+    }
+
     async function loadCalendar() {
         const dt = new Date();
         if (nav !== 0) {
@@ -212,6 +227,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             takvimVerileri = await fetchTakvimVerileri(currentYearForData);
             await combineAndSetOzelGunler(currentYearForData);
         }
+        // İzinleri çek
+        izinler = await fetchIzinler(year, month);
 
         currentMonthYearDisplay.innerText = `${trMonths[month]} ${year}`;
         calendarBody.innerHTML = '';
@@ -282,7 +299,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 let nobetciAdi = "-";
                 let nobetciIdForDrag = null;
-
+                let yedekTip = null;
+                let yedekAdi = null;
+                // Haftanın asıl nöbetçisi
                 if (haftalikVeri && typeof haftalikVeri.nobetci_id_override === 'number') {
                     const manuelAtananNobetci = nobetciler.find(n => n.id === haftalikVeri.nobetci_id_override);
                     nobetciAdi = manuelAtananNobetci ? manuelAtananNobetci.name : 'Bilinmeyen (Manuel)';
@@ -315,6 +334,30 @@ document.addEventListener('DOMContentLoaded', async () => {
                         nobetciIdForDrag = nobetciler[nobetciSira].id;
                     }
                     dutyCell.classList.remove('manual-assignment');
+                }
+                // İzinli/yedek kontrolü (haftanın günlerinde)
+                let haftaninGunleri = [];
+                for (let j = 0; j < 7; j++) {
+                    const gun = new Date(daySquareYear, daySquareMonth, daySquareDay - 6 + j);
+                    gun.setHours(12,0,0,0);
+                    haftaninGunleri.push(gun);
+                }
+                // Haftanın günlerinde asıl nöbetçi izinli mi?
+                let izinliGunler = haftaninGunleri.filter(gun => {
+                    return izinler.some(iz => iz.nobetci_id === nobetciIdForDrag && new Date(iz.baslangic_tarihi) <= gun && new Date(iz.bitis_tarihi) >= gun);
+                });
+                if (izinliGunler.length > 0) {
+                    // Yedekleri bul
+                    let izinKaydi = izinler.find(iz => iz.nobetci_id === nobetciIdForDrag);
+                    if (izinKaydi) {
+                        yedekTip = 'gunduz';
+                        yedekAdi = izinKaydi.gunduz_yedek_adi || izinKaydi.gece_yedek_adi;
+                        if (yedekAdi) {
+                            nobetciAdi = yedekAdi + ' (Yedek)';
+                            dutyCell.classList.add('yedek-nobetci');
+                            dutyCell.title = `Asıl nöbetçi izinli. Yedek: ${yedekAdi}`;
+                        }
+                    }
                 }
                 dutyCell.textContent = nobetciAdi;
                 dutyCell.dataset.nobetciId = String(nobetciIdForDrag); // String'e çevir, null ise "null" olur
