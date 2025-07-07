@@ -296,6 +296,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 const haftalikVeri = takvimVerileri.find(d => d.yil === daySquareYear && d.hafta === currentGlobalWeekNumber);
                 remarkCell.textContent = haftalikVeri ? haftalikVeri.aciklama : "";
+                // --- Haftalık izinli bilgisi ekle ---
+                // Haftanın günleri (remarkCell için)
+                let haftaninGunleri_izin_remark = [];
+                for (let j = 0; j < 7; j++) {
+                    const gun = new Date(daySquareYear, daySquareMonth, daySquareDay - 6 + j);
+                    gun.setHours(12,0,0,0);
+                    haftaninGunleri_izin_remark.push(gun);
+                }
+                // O hafta izinli olanlar (en az 1 günü çakışanlar)
+                let haftalikIzinler = izinler.filter(iz => {
+                    return haftaninGunleri_izin_remark.some(gun => new Date(iz.baslangic_tarihi) <= gun && new Date(iz.bitis_tarihi) >= gun);
+                });
+                if (haftalikIzinler.length > 0) {
+                    const izinInfoDiv = document.createElement('div');
+                    izinInfoDiv.style.fontSize = '0.85em';
+                    izinInfoDiv.style.color = '#b8860b';
+                    izinInfoDiv.style.marginTop = '2px';
+                    izinInfoDiv.innerHTML =
+                        'İzinliler: ' + haftalikIzinler.map(iz =>
+                            `${iz.nobetci_adi} (${(iz.gunduz_yedek_adi ? 'Gündüz Yedek: ' + iz.gunduz_yedek_adi : '')}${(iz.gece_yedek_adi ? (iz.gunduz_yedek_adi ? ', ' : '') + 'Gece Yedek: ' + iz.gece_yedek_adi : '')})`
+                        ).join('<br>');
+                    remarkCell.appendChild(izinInfoDiv);
+                }
 
                 let nobetciAdi = "-";
                 let nobetciIdForDrag = null;
@@ -336,14 +359,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                     dutyCell.classList.remove('manual-assignment');
                 }
                 // İzinli/yedek kontrolü (haftanın günlerinde)
-                let haftaninGunleri = [];
+                let haftaninGunleri_izin_duty = [];
                 for (let j = 0; j < 7; j++) {
                     const gun = new Date(daySquareYear, daySquareMonth, daySquareDay - 6 + j);
                     gun.setHours(12,0,0,0);
-                    haftaninGunleri.push(gun);
+                    haftaninGunleri_izin_duty.push(gun);
                 }
                 // Haftanın günlerinde asıl nöbetçi izinli mi?
-                let izinliGunler = haftaninGunleri.filter(gun => {
+                let izinliGunler = haftaninGunleri_izin_duty.filter(gun => {
                     return izinler.some(iz => iz.nobetci_id === nobetciIdForDrag && new Date(iz.baslangic_tarihi) <= gun && new Date(iz.bitis_tarihi) >= gun);
                 });
                 if (izinliGunler.length > 0) {
