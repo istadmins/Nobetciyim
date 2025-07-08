@@ -124,6 +124,32 @@ async function getAsilHaftalikNobetci(date) {
 }
 
 /**
+ * Verilen bir tarih için o anda görevli olan nöbetçiyi (izin/yedek dahil) döndürür.
+ * Şimdilik sadece gündüz/gece ayrımı yok, ileride saat parametresiyle genişletilebilir.
+ * @param {Date} date - Görevli nöbetçinin belirleneceği tarih ve saat.
+ * @returns {Promise<Object|null>} Görevli nöbetçi nesnesi veya null.
+ */
+async function getGorevliNobetci(date) {
+    // 1. Haftalık asıl nöbetçiyi bul
+    const asilNobetci = await getAsilHaftalikNobetci(date);
+    if (!asilNobetci) return null;
+    // 2. O gün izinli mi?
+    const izinler = await db.getIzinliNobetciVeYedekleri(date);
+    const izinKaydi = izinler.find(iz => iz.nobetci_id === asilNobetci.id);
+    if (!izinKaydi) return asilNobetci; // İzinli değilse asıl nöbetçi
+    // 3. İzinli ise yedek döndür (şimdilik gündüz yedek öncelikli)
+    if (izinKaydi.gunduz_yedek_id) {
+        const yedek = await db.getNobetciById(izinKaydi.gunduz_yedek_id);
+        if (yedek) return yedek;
+    }
+    if (izinKaydi.gece_yedek_id) {
+        const yedek = await db.getNobetciById(izinKaydi.gece_yedek_id);
+        if (yedek) return yedek;
+    }
+    return null; // Yedek de yoksa kimse yok
+}
+
+/**
  * Nöbet sıralama ayarlarını veritabanından alır.
  * @returns {Promise<Object>} Nöbet sıralama ayarları
  */
@@ -157,5 +183,6 @@ async function getNobetSiralamaAyarlari() {
 module.exports = {
     getWeekOfYear,
     getAsilHaftalikNobetci,
-    getAllNobetcilerFromDB
+    getAllNobetcilerFromDB,
+    getGorevliNobetci
 };

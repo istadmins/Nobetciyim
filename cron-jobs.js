@@ -1,7 +1,7 @@
 // Nobetciyim/cron-jobs.js
 const cron = require('node-cron');
 const db = require('./db');
-const { getAsilHaftalikNobetci } = require('./utils/calendarUtils');
+const { getAsilHaftalikNobetci, getGorevliNobetci } = require('./utils/calendarUtils');
 const { notifyAllOfDutyChange } = require('./telegram_bot_handler');
 
 // Loglama için yardımcı fonksiyonlar
@@ -59,8 +59,8 @@ function isTimeInInterval(dateObj, startTimeStr, endTimeStr) {
 cron.schedule('* * * * *', async () => {
     const now = new Date();
     try {
-        const aktifNobetci = await db.getAktifNobetci();
-        if (!aktifNobetci) return;
+        const gorevliNobetci = await getGorevliNobetci(now);
+        if (!gorevliNobetci) return;
         const tumKrediKurallari = await db.getAllKrediKurallari();
         const shiftTimeRanges = await db.getShiftTimeRanges();
         let eklenecekKredi = 0;
@@ -82,9 +82,9 @@ cron.schedule('* * * * *', async () => {
                 eklenecekKredi = 1;
             }
         }
-        const yeniKredi = (aktifNobetci.kredi || 0) + eklenecekKredi;
-        await db.updateNobetciKredi(aktifNobetci.id, yeniKredi);
-        logCreditUpdate(`${aktifNobetci.name} kredisi: ${yeniKredi} (+${eklenecekKredi} ${krediSebebi})`);
+        const yeniKredi = (gorevliNobetci.kredi || 0) + eklenecekKredi;
+        await db.updateNobetciKredi(gorevliNobetci.id, yeniKredi);
+        logCreditUpdate(`[GÖREVLİ] ${gorevliNobetci.name} kredisi: ${yeniKredi} (+${eklenecekKredi} ${krediSebebi})`);
     } catch (error) {
         logger.error("[Kredi Cron] Hata:", error);
     }
