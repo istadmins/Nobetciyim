@@ -362,57 +362,31 @@ Merhaba ${guncelNobetci.name},
 // GELECEK HAFTA NÖBETÇİ komutu
 botInstance.onText(/^\/gelecek_hafta_nobetci/, async (msg) => {
     const chatId = msg.chat.id;
-    const nobetciYetkili = await getAuthorizedNobetciByTelegramId(chatId);
-    if (!nobetciYetkili) {
-        return botInstance.sendMessage(chatId, "❌ Bu komutu kullanma yetkiniz bulunmamaktadır.");
-    }
     try {
-        const today = new Date();
-        // Haftanın başı: gelecek haftanın Pazartesi 00:00
-        const dayOfWeek = today.getDay(); // 0: Pazar, 1: Pazartesi, ...
-        const gelecekHaftaBasi = new Date(today);
-        gelecekHaftaBasi.setDate(today.getDate() - ((dayOfWeek + 6) % 7) + 7); // gelecek haftanın Pazartesi
-        gelecekHaftaBasi.setHours(0, 0, 0, 0);
-        const gelecekHaftaSonu = new Date(gelecekHaftaBasi);
-        gelecekHaftaSonu.setDate(gelecekHaftaBasi.getDate() + 6); // Pazar
-        gelecekHaftaSonu.setHours(23, 59, 59, 999);
-
-        // Haftanın nöbetçisini belirle (override, sıralama, izinli/ye yedek mantığı ile)
-        const gelecekHaftaNobetci = await getAsilHaftalikNobetci(gelecekHaftaBasi);
-        const gelecekHaftaYil = gelecekHaftaBasi.getFullYear();
-        const gelecekHaftaNo = getWeekOfYear(gelecekHaftaBasi);
-        const gelecekHaftaAciklama = await db.getDutyOverride(gelecekHaftaYil, gelecekHaftaNo);
-
-        // Sadece o haftanın izinlileri
-        const izinler = await db.getIzinlerForDateRange(gelecekHaftaBasi.toISOString(), gelecekHaftaSonu.toISOString());
-        let izinliGelecekHaftaText = izinler.length > 0
-            ? `\n🚫 *Gelecek Hafta İzinli Olanlar:*\n` + izinler.map(i => `• ${i.nobetci_adi} (${toTurkishDateTime(i.baslangic_tarihi)} - ${toTurkishDateTime(i.bitis_tarihi)})`).join("\n")
-            : "";
-
-        // Açıklama (remark)
-        let aciklamaText = "";
-        if (gelecekHaftaAciklama && gelecekHaftaAciklama.aciklama) {
-            aciklamaText = `\n📝 *Açıklama:* ${gelecekHaftaAciklama.aciklama}`;
+        const now = new Date();
+        const haftalikTarih = new Date(now);
+        haftalikTarih.setDate(haftalikTarih.getDate() + 7);
+        const calendarUtils = require('./utils/calendarUtils');
+        const getWeekOfYear = calendarUtils.getWeekOfYear;
+        const haftaNo = getWeekOfYear(haftalikTarih);
+        const yil = haftalikTarih.getFullYear();
+        const asilNobetci = await calendarUtils.getAsilHaftalikNobetci(haftalikTarih);
+        const db = require('./db');
+        // Haftalık açıklama
+        let aciklama = '';
+        await new Promise((resolve) => {
+            db.get(`SELECT aciklama FROM takvim_aciklamalari WHERE yil = ? AND hafta = ?`, [yil, haftaNo], (err, row) => {
+                if (!err && row && row.aciklama) aciklama = row.aciklama;
+                resolve();
+            });
+        });
+        let msgText = `📅 Gelecek Hafta (${haftaNo}. hafta):\n👤 Nöbetçi: ${asilNobetci ? asilNobetci.name : '-'}\n`;
+        if (aciklama && aciklama.trim() !== '') {
+            msgText += `Açıklama: ${aciklama}`;
         }
-
-        // Yardımcı: ISO -> DD.MM.YYYY SS:dd
-        function toTurkishDateTime(iso) {
-            const d = new Date(iso);
-            const gun = String(d.getDate()).padStart(2, '0');
-            const ay = String(d.getMonth() + 1).padStart(2, '0');
-            const yil = d.getFullYear();
-            const saat = String(d.getHours()).padStart(2, '0');
-            const dakika = String(d.getMinutes()).padStart(2, '0');
-            return `${gun}.${ay}.${yil} ${saat}:${dakika}`;
-        }
-
-        let msgText = `📅 *Haftalık Nöbetçi Bilgileri*\n\n` +
-            `📍 Gelecek Hafta (${gelecekHaftaNo}. hafta):\n👨‍⚕️ Nöbetçi: ${gelecekHaftaNobetci ? gelecekHaftaNobetci.name : '-'}\n` +
-            izinliGelecekHaftaText + aciklamaText;
-
-        botInstance.sendMessage(chatId, msgText, { parse_mode: 'Markdown' });
-    } catch (error) {
-        botInstance.sendMessage(chatId, "❌ Gelecek hafta nöbetçi bilgisi alınırken hata oluştu.");
+        botInstance.sendMessage(chatId, msgText);
+    } catch (e) {
+        botInstance.sendMessage(chatId, 'Gelecek hafta nöbetçi bilgisi alınırken hata oluştu.');
     }
 });
 
