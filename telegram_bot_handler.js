@@ -360,7 +360,7 @@ Merhaba ${guncelNobetci.name},
 
 
 // GELECEK HAFTA NÖBETÇİ komutu
-botInstance.onText(/^\/gelecek_hafta_nobetci/, async (msg) => {
+botInstance.onText(/\/gelecek_hafta_nobetci/, async (msg) => {
     const chatId = msg.chat.id;
     try {
         const now = new Date();
@@ -380,7 +380,9 @@ botInstance.onText(/^\/gelecek_hafta_nobetci/, async (msg) => {
                 resolve();
             });
         });
-        let msgText = `📅 Gelecek Hafta (${haftaNo}. hafta):\n👤 Nöbetçi: ${asilNobetci ? asilNobetci.name : '-'}\n`;
+        let msgText = `Haftalık Nöbetçi Bilgileri\n\n`;
+        msgText += `📅 Gelecek Hafta (${haftaNo}. hafta):\n`;
+        msgText += `👨‍⚕️ Nöbetçi: ${asilNobetci ? asilNobetci.name : '-'}\n\n`;
         if (aciklama && aciklama.trim() !== '') {
             msgText += `Açıklama: ${aciklama}`;
         }
