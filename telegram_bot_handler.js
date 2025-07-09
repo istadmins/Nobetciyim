@@ -360,7 +360,7 @@ Merhaba ${guncelNobetci.name},
 
 
 // GELECEK HAFTA NÖBETÇİ komutu
-botInstance.onText(/^\/gelecek_hafta_nobetci$/, async (msg) => {
+botInstance.onText(/^\/gelecek_hafta_nobetci/, async (msg) => {
     const chatId = msg.chat.id;
     const nobetciYetkili = await getAuthorizedNobetciByTelegramId(chatId);
     if (!nobetciYetkili) {
