@@ -314,9 +314,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                     izinInfoDiv.style.color = '#b8860b';
                     izinInfoDiv.style.marginTop = '2px';
                     izinInfoDiv.innerHTML =
-                        'İzinliler: ' + haftalikIzinler.map(iz =>
-                            `${iz.nobetci_adi} (${(iz.gunduz_yedek_adi ? 'Gündüz Yedek: ' + iz.gunduz_yedek_adi : '')}${(iz.gece_yedek_adi ? (iz.gunduz_yedek_adi ? ', ' : '') + 'Gece Yedek: ' + iz.gece_yedek_adi : '')})`
-                        ).join('<br>');
+                        'İzinliler: ' + haftalikIzinler.map(iz => {
+                            const baslangic = iz.baslangic_tarihi ? (iz.baslangic_tarihi.replace('T', ' ').slice(0, 16)) : '';
+                            const bitis = iz.bitis_tarihi ? (iz.bitis_tarihi.replace('T', ' ').slice(0, 16)) : '';
+                            let detay = `${iz.nobetci_adi} (${baslangic} - ${bitis}`;
+                            const yedekler = [];
+                            if (iz.gunduz_yedek_adi) yedekler.push('Gündüz Yedek: ' + iz.gunduz_yedek_adi);
+                            if (iz.gece_yedek_adi) yedekler.push('Gece Yedek: ' + iz.gece_yedek_adi);
+                            if (yedekler.length > 0) detay += ', ' + yedekler.join(', ');
+                            detay += ')';
+                            return detay;
+                        }).join('<br>');
                     remarkCell.appendChild(izinInfoDiv);
                 }
 

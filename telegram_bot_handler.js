@@ -416,6 +416,40 @@ botInstance.onText(/^\/gelecek_hafta_nobetci$/, async (msg) => {
     }
 });
 
+// /izinli_olanlar komutu: Şu anda aktif olan izinlileri gösterir
+botInstance.onText(/\/izinli_olanlar/, async (msg) => {
+    const chatId = msg.chat.id;
+    try {
+        const now = new Date();
+        const todayISO = now.toISOString().slice(0, 10);
+        const db = require('./db');
+        db.all(`SELECT i.baslangic_tarihi, i.bitis_tarihi, n.name as nobetci_adi
+                FROM nobetci_izinleri i
+                LEFT JOIN Nobetciler n ON i.nobetci_id = n.id
+                WHERE date(i.baslangic_tarihi) <= date(?) AND date(i.bitis_tarihi) >= date(?)
+                ORDER BY i.baslangic_tarihi ASC`,
+            [todayISO, todayISO],
+            (err, rows) => {
+                if (err) {
+                    botInstance.sendMessage(chatId, 'İzinli listesi alınırken hata oluştu.');
+                    return;
+                }
+                if (!rows || rows.length === 0) {
+                    botInstance.sendMessage(chatId, 'Şu anda izinli olan yok.');
+                    return;
+                }
+                let msgText = 'Şu anda izinli olanlar:\n\n';
+                rows.forEach(row => {
+                    msgText += `• ${row.nobetci_adi}  (${row.baslangic_tarihi.slice(0, 16)} - ${row.bitis_tarihi.slice(0, 16)})\n`;
+                });
+                botInstance.sendMessage(chatId, msgText);
+            }
+        );
+    } catch (e) {
+        botInstance.sendMessage(chatId, 'İzinli listesi alınırken hata oluştu.');
+    }
+});
+
 
     // Callback query handler
     botInstance.on('callback_query', async (callbackQuery) => {
