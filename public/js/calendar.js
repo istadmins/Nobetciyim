@@ -324,7 +324,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 let nobetciIdForDrag = null;
                 let yedekTip = null;
                 let yedekAdi = null;
-                // Haftanın asıl nöbetçisi
+                // Haftanın asıl nöbetçisi (dutyCell)
                 if (haftalikVeri && typeof haftalikVeri.nobetci_id_override === 'number') {
                     const manuelAtananNobetci = nobetciler.find(n => n.id === haftalikVeri.nobetci_id_override);
                     nobetciAdi = manuelAtananNobetci ? manuelAtananNobetci.name : 'Bilinmeyen (Manuel)';
@@ -358,32 +358,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                     dutyCell.classList.remove('manual-assignment');
                 }
-                // İzinli/yedek kontrolü (haftanın günlerinde)
-                let haftaninGunleri_izin_duty = [];
-                for (let j = 0; j < 7; j++) {
-                    const gun = new Date(daySquareYear, daySquareMonth, daySquareDay - 6 + j);
-                    gun.setHours(12,0,0,0);
-                    haftaninGunleri_izin_duty.push(gun);
-                }
-                // Haftanın günlerinde asıl nöbetçi izinli mi?
-                let izinliGunler = haftaninGunleri_izin_duty.filter(gun => {
-                    return izinler.some(iz => iz.nobetci_id === nobetciIdForDrag && new Date(iz.baslangic_tarihi) <= gun && new Date(iz.bitis_tarihi) >= gun);
-                });
-                if (izinliGunler.length > 0) {
-                    // Yedekleri bul
-                    let izinKaydi = izinler.find(iz => iz.nobetci_id === nobetciIdForDrag);
-                    if (izinKaydi) {
-                        yedekTip = 'gunduz';
-                        yedekAdi = izinKaydi.gunduz_yedek_adi || izinKaydi.gece_yedek_adi;
-                        if (yedekAdi) {
-                            nobetciAdi = yedekAdi + ' (Yedek)';
-                            dutyCell.classList.add('yedek-nobetci');
-                            dutyCell.title = `Asıl nöbetçi izinli. Yedek: ${yedekAdi}`;
-                        }
-                    }
-                }
                 dutyCell.textContent = nobetciAdi;
-                dutyCell.dataset.nobetciId = String(nobetciIdForDrag); // String'e çevir, null ise "null" olur
+                dutyCell.dataset.nobetciId = String(nobetciIdForDrag);
                 dutyCell.dataset.year = daySquareYear;
                 dutyCell.dataset.week = currentGlobalWeekNumber;
 
