@@ -375,6 +375,30 @@ router.get('/list', (req, res) => {
   });
 });
 
+// Günlük görevli nöbetçi listesini döndür (izin/yedek kontrolüyle)
+router.get('/gunluk-gorevli', async (req, res) => {
+  const { baslangic, bitis } = req.query;
+  if (!baslangic || !bitis) {
+    return res.status(400).json({ error: 'Başlangıç ve bitiş tarihi gereklidir.' });
+  }
+  const start = new Date(baslangic);
+  const end = new Date(bitis);
+  if (isNaN(start) || isNaN(end) || end < start) {
+    return res.status(400).json({ error: 'Geçersiz tarih aralığı.' });
+  }
+  const calendarUtils = require('../utils/calendarUtils');
+  const result = [];
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const currentDate = new Date(d);
+    const gorevli = await calendarUtils.getGorevliNobetci(currentDate);
+    result.push({
+      tarih: currentDate.toISOString().slice(0, 10),
+      gorevli: gorevli ? { id: gorevli.id, name: gorevli.name } : null
+    });
+  }
+  res.json(result);
+});
+
 module.exports = router;
 
 
