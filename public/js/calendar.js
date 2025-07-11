@@ -366,7 +366,36 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                     dutyCell.classList.remove('manual-assignment');
                 }
-                dutyCell.textContent = nobetciAdi;
+                // GÜNLÜK HÜCREDE GÖREVLI KİM? (ASİL İZİNLİYSE YEDEK GÖSTER)
+                let gunduzYedek = null;
+                let asilIzinKaydi = null;
+                // O haftanın günleri için izinli kontrolü
+                for (let j = 0; j < 7; j++) {
+                    const gun = new Date(daySquareYear, daySquareMonth, daySquareDay - 6 + j);
+                    gun.setHours(12,0,0,0);
+                    // O gün için izinli kaydı var mı?
+                    const izinKaydi = izinler.find(iz => {
+                        const bas = new Date(iz.baslangic_tarihi);
+                        const bit = new Date(iz.bitis_tarihi);
+                        return iz.nobetci_id === nobetciIdForDrag && bas <= gun && bit >= gun;
+                    });
+                    if (izinKaydi) {
+                        asilIzinKaydi = izinKaydi;
+                        if (izinKaydi.gunduz_yedek_adi) {
+                            gunduzYedek = izinKaydi.gunduz_yedek_adi;
+                        }
+                        break;
+                    }
+                }
+                if (gunduzYedek) {
+                    dutyCell.textContent = gunduzYedek + ' (Yedek)';
+                    dutyCell.title = nobetciAdi + ' izinli, yedek görevde';
+                    dutyCell.style.background = '#ffeeba';
+                } else {
+                    dutyCell.textContent = nobetciAdi;
+                    dutyCell.title = '';
+                    dutyCell.style.background = '';
+                }
                 dutyCell.dataset.nobetciId = String(nobetciIdForDrag);
                 dutyCell.dataset.year = daySquareYear;
                 dutyCell.dataset.week = currentGlobalWeekNumber;
