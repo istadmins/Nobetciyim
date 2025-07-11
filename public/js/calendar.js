@@ -296,37 +296,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 const haftalikVeri = takvimVerileri.find(d => d.yil === daySquareYear && d.hafta === currentGlobalWeekNumber);
                 remarkCell.textContent = haftalikVeri ? haftalikVeri.aciklama : "";
-                // --- Haftalık izinli bilgisi ekle ---
-                // Haftanın günleri (remarkCell için)
-                let haftaninGunleri_izin_remark = [];
-                for (let j = 0; j < 7; j++) {
-                    const gun = new Date(daySquareYear, daySquareMonth, daySquareDay - 6 + j);
-                    gun.setHours(12,0,0,0);
-                    haftaninGunleri_izin_remark.push(gun);
-                }
-                // O hafta izinli olanlar (en az 1 günü çakışanlar)
-                let haftalikIzinler = izinler.filter(iz => {
-                    return haftaninGunleri_izin_remark.some(gun => new Date(iz.baslangic_tarihi) <= gun && new Date(iz.bitis_tarihi) >= gun);
-                });
-                if (haftalikIzinler.length > 0) {
-                    const izinInfoDiv = document.createElement('div');
-                    izinInfoDiv.style.fontSize = '0.85em';
-                    izinInfoDiv.style.color = '#b8860b';
-                    izinInfoDiv.style.marginTop = '2px';
-                    izinInfoDiv.innerHTML =
-                        'İzinliler: ' + haftalikIzinler.map(iz => {
-                            const baslangic = iz.baslangic_tarihi ? (iz.baslangic_tarihi.replace('T', ' ').slice(0, 16)) : '';
-                            const bitis = iz.bitis_tarihi ? (iz.bitis_tarihi.replace('T', ' ').slice(0, 16)) : '';
-                            let detay = `${iz.nobetci_adi} (${baslangic} - ${bitis}`;
-                            const yedekler = [];
-                            if (iz.gunduz_yedek_adi) yedekler.push('Gündüz Yedek: ' + iz.gunduz_yedek_adi);
-                            if (iz.gece_yedek_adi) yedekler.push('Gece Yedek: ' + iz.gece_yedek_adi);
-                            if (yedekler.length > 0) detay += ', ' + yedekler.join(', ');
-                            detay += ')';
-                            return detay;
-                        }).join('<br>');
-                    remarkCell.appendChild(izinInfoDiv);
-                }
 
                 let nobetciAdi = "-";
                 let nobetciIdForDrag = null;
@@ -366,36 +335,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                     dutyCell.classList.remove('manual-assignment');
                 }
-                // GÜNLÜK HÜCREDE GÖREVLI KİM? (ASİL İZİNLİYSE YEDEK GÖSTER)
-                let gunduzYedek = null;
-                let asilIzinKaydi = null;
-                // O haftanın günleri için izinli kontrolü
-                for (let j = 0; j < 7; j++) {
-                    const gun = new Date(daySquareYear, daySquareMonth, daySquareDay - 6 + j);
-                    gun.setHours(12,0,0,0);
-                    // O gün için izinli kaydı var mı?
-                    const izinKaydi = izinler.find(iz => {
-                        const bas = new Date(iz.baslangic_tarihi);
-                        const bit = new Date(iz.bitis_tarihi);
-                        return iz.nobetci_id === nobetciIdForDrag && bas <= gun && bit >= gun;
-                    });
-                    if (izinKaydi) {
-                        asilIzinKaydi = izinKaydi;
-                        if (izinKaydi.gunduz_yedek_adi) {
-                            gunduzYedek = izinKaydi.gunduz_yedek_adi;
-                        }
-                        break;
-                    }
-                }
-                if (gunduzYedek) {
-                    dutyCell.textContent = gunduzYedek + ' (Yedek)';
-                    dutyCell.title = nobetciAdi + ' izinli, yedek görevde';
-                    dutyCell.style.background = '#ffeeba';
-                } else {
-                    dutyCell.textContent = nobetciAdi;
-                    dutyCell.title = '';
-                    dutyCell.style.background = '';
-                }
+                dutyCell.textContent = nobetciAdi;
                 dutyCell.dataset.nobetciId = String(nobetciIdForDrag);
                 dutyCell.dataset.year = daySquareYear;
                 dutyCell.dataset.week = currentGlobalWeekNumber;
