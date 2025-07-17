@@ -238,7 +238,16 @@ db.getIzinliNobetciVeYedekleri = function(date) {
     return new Promise((resolve, reject) => {
         // date: Date nesnesi veya ISO string
         let d = (date instanceof Date) ? date : new Date(date);
-        let nowISO = d.toISOString();
+        // Local ISO string (YYYY-MM-DDTHH:mm)
+        function toLocalISOString(date) {
+            const pad = n => n < 10 ? '0' + n : n;
+            return date.getFullYear() + '-' +
+                pad(date.getMonth() + 1) + '-' +
+                pad(date.getDate()) + 'T' +
+                pad(date.getHours()) + ':' +
+                pad(date.getMinutes());
+        }
+        let nowLocalISO = toLocalISOString(d);
         db.all(
             `SELECT i.*, n1.name as nobetci_adi, n2.name as gunduz_yedek_adi, n3.name as gece_yedek_adi
              FROM nobetci_izinleri i
@@ -247,7 +256,7 @@ db.getIzinliNobetciVeYedekleri = function(date) {
              LEFT JOIN Nobetciler n3 ON i.gece_yedek_id = n3.id
              WHERE i.baslangic_tarihi <= ? AND i.bitis_tarihi > ?
              ORDER BY i.baslangic_tarihi ASC`,
-            [nowISO, nowISO],
+            [nowLocalISO, nowLocalISO],
             (err, rows) => {
                 if (err) reject(err);
                 else resolve(rows);
