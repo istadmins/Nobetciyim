@@ -172,14 +172,14 @@ async function setupEveningShiftCronJob() {
                         logger.info(`[Akşam Vardiya] Tatil günü, vardiya değişimi atlandı.`);
                         return;
                     }
-                    const hedefNobetci = await getAsilHaftalikNobetci(new Date());
-                    if (hedefNobetci && hedefNobetci.id) {
+                    // DEĞİŞİKLİK: Haftalık asıl nöbetçi yerine, izin/yedek kontrolüyle görevli nöbetçiyi bul
+                    const { nobetci, vardiya } = await getGorevliNobetci(now);
+                    if (nobetci && nobetci.id) {
                         const currentActive = await db.getAktifNobetci();
-                        if (!currentActive || currentActive.id !== hedefNobetci.id) {
-                            await db.setAktifNobetci(hedefNobetci.id);
-                            logger.info(`[Akşam Vardiya] Nöbetçi ayarlandı: ${hedefNobetci.name}.`);
-                            
-                            await notifyAllOfDutyChange(hedefNobetci.name, 'Akşam Vardiya Değişimi');
+                        if (!currentActive || currentActive.id !== nobetci.id) {
+                            await db.setAktifNobetci(nobetci.id);
+                            logger.info(`[Akşam Vardiya] Nöbetçi ayarlandı: ${nobetci.name}.`);
+                            await notifyAllOfDutyChange(nobetci.name, 'Akşam Vardiya Değişimi');
                         }
                     }
                 } catch (error) {
