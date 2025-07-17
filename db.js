@@ -85,6 +85,13 @@ function initializeSchema() {
             ayar_key TEXT PRIMARY KEY,
             ayar_value TEXT NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS AktifNobetciOverride (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            nobetci_id INTEGER,
+            atama_zamani TEXT,
+            FOREIGN KEY (nobetci_id) REFERENCES Nobetciler(id)
+        );
     `;
 
     db.exec(createTablesSql, (err) => {
@@ -262,6 +269,36 @@ db.getIzinliNobetciVeYedekleri = function(date) {
                 else resolve(rows);
             }
         );
+    });
+};
+
+db.setAktifNobetciOverride = function(nobetciId) {
+    return new Promise((resolve, reject) => {
+        const now = new Date().toISOString();
+        db.run(`INSERT INTO AktifNobetciOverride (id, nobetci_id, atama_zamani) VALUES (1, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET nobetci_id = excluded.nobetci_id, atama_zamani = excluded.atama_zamani`,
+            [nobetciId, now],
+            function(err) {
+                if (err) reject(err);
+                else resolve();
+            }
+        );
+    });
+};
+db.getAktifNobetciOverride = function() {
+    return new Promise((resolve, reject) => {
+        db.get("SELECT * FROM AktifNobetciOverride WHERE id = 1", [], (err, row) => {
+            if (err) reject(err);
+            else resolve(row);
+        });
+    });
+};
+db.clearAktifNobetciOverride = function() {
+    return new Promise((resolve, reject) => {
+        db.run("DELETE FROM AktifNobetciOverride WHERE id = 1", [], function(err) {
+            if (err) reject(err);
+            else resolve();
+        });
     });
 };
 

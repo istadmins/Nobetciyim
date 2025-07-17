@@ -65,13 +65,41 @@ cron.schedule('* * * * *', async () => {
         izinler.forEach(iz => {
             console.log(`[DEBUG][Kredi Cron] İzinli: ${iz.nobetci_adi} (${iz.baslangic_tarihi} - ${iz.bitis_tarihi}), Gündüz Yedek: ${iz.gunduz_yedek_adi}, Gece Yedek: ${iz.gece_yedek_adi}`);
         });
-        const { nobetci, vardiya } = await getGorevliNobetci(now);
-        if (!nobetci) return;
-        const currentActive = await db.getAktifNobetci();
-        if (!currentActive || currentActive.id !== nobetci.id) {
-            await db.setAktifNobetci(nobetci.id);
-            // İsteğe bağlı: notifyAllOfDutyChange(nobetci.name, "Otomatik Aktif Değişim");
+        // 1. Manuel override kontrolü
+        const override = await db.getAktifNobetciOverride();
+        let gorevliNobetci = null;
+        let gorevliKaynak = '';
+        if (override && override.nobetci_id) {
+            const overrideNobetci = await db.getNobetciById(override.nobetci_id);
+            if (overrideNobetci) {
+                // İzinli mi kontrol et
+                const izinler = await db.getIzinliNobetciVeYedekleri(now);
+                const izinKaydi = izinler.find(iz => iz.nobetci_id === overrideNobetci.id);
+                if (!izinKaydi) {
+                    gorevliNobetci = overrideNobetci;
+                    gorevliKaynak = 'override';
+                } else {
+                    // Override'daki kişi izinliyse override'ı temizle
+                    await db.clearAktifNobetciOverride();
+                }
+            }
         }
+        // 2. Eğer override yoksa veya override izinliyse, normal algoritma
+        if (!gorevliNobetci) {
+            const { nobetci, vardiya } = await getGorevliNobetci(now);
+            if (!nobetci) return;
+            gorevliNobetci = nobetci;
+            gorevliKaynak = 'otomatik';
+        }
+        // 3. Aktif nöbetçi değiştiyse güncelle ve Telegram bildirimi gönder
+        const currentActive = await db.getAktifNobetci();
+        if (!currentActive || currentActive.id !== gorevliNobetci.id) {
+            await db.setAktifNobetci(gorevliNobetci.id);
+            if (typeof notifyAllOfDutyChange === 'function') {
+                await notifyAllOfDutyChange(gorevliNobetci.name, gorevliKaynak === 'override' ? 'Manuel Atama' : 'Otomatik Değişim');
+            }
+        }
+        // 4. Kredi işlemleri
         const tumKrediKurallari = await db.getAllKrediKurallari();
         const shiftTimeRanges = await db.getShiftTimeRanges();
         let eklenecekKredi = 0;
@@ -93,9 +121,9 @@ cron.schedule('* * * * *', async () => {
                 eklenecekKredi = 1;
             }
         }
-        const yeniKredi = (nobetci.kredi || 0) + eklenecekKredi;
-        await db.updateNobetciKredi(nobetci.id, yeniKredi);
-        logCreditUpdate(`[GÖREVLİ] ${nobetci.name} kredisi: ${yeniKredi} (+${eklenecekKredi} ${krediSebebi})`);
+        const yeniKredi = (gorevliNobetci.kredi || 0) + eklenecekKredi;
+        await db.updateNobetciKredi(gorevliNobetci.id, yeniKredi);
+        logCreditUpdate(`[GÖREVLİ] ${gorevliNobetci.name} kredisi: ${yeniKredi} (+${eklenecekKredi} ${krediSebebi})`);
     } catch (error) {
         logger.error("[Kredi Cron] Hata:", error);
     }

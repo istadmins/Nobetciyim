@@ -209,7 +209,7 @@ router.get('/by-telegram/:telegramId', (req, res) => {
 });
 
 // Bir nöbetçiyi aktif olarak ayarla
-router.post('/:id/set-aktif', (req, res) => {
+router.post('/:id/set-aktif', async (req, res) => {
     const nobetciIdToActivate = parseInt(req.params.id);
     let newActiveGuardName = 'Bilinmiyor';
     db.serialize(() => {
@@ -228,6 +228,7 @@ router.post('/:id/set-aktif', (req, res) => {
                     }
                     if (this.changes === 0) { return res.status(404).json({ error: "Belirtilen ID ile nöbetçi bulunamadı." }); }
                     console.log(`Nöbetçi ${newActiveGuardName} (ID: ${nobetciIdToActivate}) aktif olarak ayarlandı.`);
+                    await db.setAktifNobetciOverride(nobetciIdToActivate);
                     await sendTelegramNotificationForActiveGuardChange(newActiveGuardName);
                     res.json({ message: `Nöbetçi ${newActiveGuardName} (ID: ${nobetciIdToActivate}) aktif olarak ayarlandı.` });
                 });
