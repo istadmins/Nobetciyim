@@ -238,18 +238,16 @@ db.getIzinliNobetciVeYedekleri = function(date) {
     return new Promise((resolve, reject) => {
         // date: Date nesnesi veya ISO string
         let d = (date instanceof Date) ? date : new Date(date);
-        // O günün 00:00:00 ve 23:59:59'u
-        let gunBaslangic = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0).toISOString();
-        let gunBitis = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999).toISOString();
+        let nowISO = d.toISOString();
         db.all(
             `SELECT i.*, n1.name as nobetci_adi, n2.name as gunduz_yedek_adi, n3.name as gece_yedek_adi
              FROM nobetci_izinleri i
              LEFT JOIN Nobetciler n1 ON i.nobetci_id = n1.id
              LEFT JOIN Nobetciler n2 ON i.gunduz_yedek_id = n2.id
              LEFT JOIN Nobetciler n3 ON i.gece_yedek_id = n3.id
-             WHERE i.baslangic_tarihi <= ? AND i.bitis_tarihi >= ?
+             WHERE i.baslangic_tarihi <= ? AND i.bitis_tarihi > ?
              ORDER BY i.baslangic_tarihi ASC`,
-            [gunBitis, gunBaslangic],
+            [nowISO, nowISO],
             (err, rows) => {
                 if (err) reject(err);
                 else resolve(rows);
