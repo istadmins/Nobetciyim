@@ -308,6 +308,14 @@ Merhaba ${guncelNobetci.name},
                 return;
             }
 
+            // YENİ: Eğer komutu kullanan kişi zaten aktif nöbetçi değilse ve kendini seçiyorsa, direkt olarak nöbeti ona ver
+            if (currentActiveGuard && requester.id !== currentActiveGuard.id) {
+                await db.setAktifNobetci(requester.id);
+                botInstance.sendMessage(requesterTelegramId, `✅ Nöbeti aldınız. Onay gerekmedi.`);
+                notifyAllOfDutyChange(requester.name, "Manuel Kendi Aldı");
+                return;
+            }
+
             // DURUM 2: Komutu kullanan kişi ASIL NÖBETÇİ DEĞİL ve devir isteyecek
             const approver = currentActiveGuard || primaryGuard;
             if (!approver || !approver.telegram_id) {
