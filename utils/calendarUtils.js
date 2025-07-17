@@ -124,29 +124,62 @@ async function getAsilHaftalikNobetci(date) {
 }
 
 /**
- * Verilen bir tarih için o anda görevli olan nöbetçiyi (izin/yedek dahil) döndürür.
- * Şimdilik sadece gündüz/gece ayrımı yok, ileride saat parametresiyle genişletilebilir.
+ * Verilen bir tarih ve saat için aktif vardiyayı ve görevli nöbetçiyi (izin/yedek dahil) döndürür.
+ * Vardiya saat aralıkları ve isimleri veritabanından dinamik olarak alınır.
  * @param {Date} date - Görevli nöbetçinin belirleneceği tarih ve saat.
- * @returns {Promise<Object|null>} Görevli nöbetçi nesnesi veya null.
+ * @returns {Promise<{nobetci: Object|null, vardiya: Object|null}>} Görevli nöbetçi ve vardiya nesnesi.
  */
 async function getGorevliNobetci(date) {
-    // 1. Haftalık asıl nöbetçiyi bul
+    // 1. Vardiya saat aralıklarını çek
+    const vardiyalar = await db.getShiftTimeRanges();
+    if (!vardiyalar || vardiyalar.length === 0) return { nobetci: null, vardiya: null };
+
+    // 2. Şu anki saat hangi vardiyaya denk geliyor?
+    const pad = n => n < 10 ? '0' + n : n;
+    const saatStr = pad(date.getHours()) + ':' + pad(date.getMinutes());
+    let aktifVardiya = null;
+    for (const v of vardiyalar) {
+        // Gece vardiyası gibi gün aşımı olan aralıklar için özel kontrol
+        if (v.baslangic_saat < v.bitis_saat) {
+            // Aynı gün içinde biten vardiya
+            if (saatStr >= v.baslangic_saat && saatStr <= v.bitis_saat) {
+                aktifVardiya = v;
+                break;
+            }
+        } else {
+            // Gece vardiyası gibi, gün aşımı var
+            if (saatStr >= v.baslangic_saat || saatStr <= v.bitis_saat) {
+                aktifVardiya = v;
+                break;
+            }
+        }
+    }
+    if (!aktifVardiya) return { nobetci: null, vardiya: null };
+
+    // 3. Haftalık asıl nöbetçiyi bul
     const asilNobetci = await getAsilHaftalikNobetci(date);
-    if (!asilNobetci) return null;
-    // 2. O gün izinli mi?
+    if (!asilNobetci) return { nobetci: null, vardiya: aktifVardiya };
+
+    // 4. O anda izinli mi? (ve yedekler)
     const izinler = await db.getIzinliNobetciVeYedekleri(date);
     const izinKaydi = izinler.find(iz => iz.nobetci_id === asilNobetci.id);
-    if (!izinKaydi) return asilNobetci; // İzinli değilse asıl nöbetçi
-    // 3. İzinli ise yedek döndür (şimdilik gündüz yedek öncelikli)
-    if (izinKaydi.gunduz_yedek_id) {
-        const yedek = await db.getNobetciById(izinKaydi.gunduz_yedek_id);
-        if (yedek) return yedek;
+    if (!izinKaydi) return { nobetci: asilNobetci, vardiya: aktifVardiya };
+
+    // 5. İzinli ise, vardiya tipine göre yedek ata
+    let yedekId = null;
+    if (aktifVardiya.vardiya_adi && aktifVardiya.vardiya_adi.toLowerCase().includes('gündüz')) {
+        yedekId = izinKaydi.gunduz_yedek_id;
+    } else if (aktifVardiya.vardiya_adi && aktifVardiya.vardiya_adi.toLowerCase().includes('gece')) {
+        yedekId = izinKaydi.gece_yedek_id;
+    } else {
+        // Eğer özel bir vardiya adı yoksa, önce gündüz yedeği, yoksa gece yedeği ata
+        yedekId = izinKaydi.gunduz_yedek_id || izinKaydi.gece_yedek_id;
     }
-    if (izinKaydi.gece_yedek_id) {
-        const yedek = await db.getNobetciById(izinKaydi.gece_yedek_id);
-        if (yedek) return yedek;
+    if (yedekId) {
+        const yedek = await db.getNobetciById(yedekId);
+        if (yedek) return { nobetci: yedek, vardiya: aktifVardiya };
     }
-    return null; // Yedek de yoksa kimse yok
+    return { nobetci: null, vardiya: aktifVardiya }; // Yedek de yoksa kimse yok
 }
 
 /**
