@@ -67,6 +67,11 @@ cron.schedule('* * * * *', async () => {
         });
         const { nobetci, vardiya } = await getGorevliNobetci(now);
         if (!nobetci) return;
+        const currentActive = await db.getAktifNobetci();
+        if (!currentActive || currentActive.id !== nobetci.id) {
+            await db.setAktifNobetci(nobetci.id);
+            // İsteğe bağlı: notifyAllOfDutyChange(nobetci.name, "Otomatik Aktif Değişim");
+        }
         const tumKrediKurallari = await db.getAllKrediKurallari();
         const shiftTimeRanges = await db.getShiftTimeRanges();
         let eklenecekKredi = 0;
