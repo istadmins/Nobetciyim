@@ -59,6 +59,12 @@ function isTimeInInterval(dateObj, startTimeStr, endTimeStr) {
 cron.schedule('* * * * *', async () => {
     const now = new Date();
     try {
+        // LOG: Şu anki zaman ve izinli kayıtları
+        const izinler = await db.getIzinliNobetciVeYedekleri(now);
+        console.log(`[DEBUG][Kredi Cron] now: ${now.toISOString()}`);
+        izinler.forEach(iz => {
+            console.log(`[DEBUG][Kredi Cron] İzinli: ${iz.nobetci_adi} (${iz.baslangic_tarihi} - ${iz.bitis_tarihi}), Gündüz Yedek: ${iz.gunduz_yedek_adi}, Gece Yedek: ${iz.gece_yedek_adi}`);
+        });
         const gorevliNobetci = await getGorevliNobetci(now);
         if (!gorevliNobetci) return;
         const tumKrediKurallari = await db.getAllKrediKurallari();
