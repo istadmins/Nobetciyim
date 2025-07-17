@@ -65,8 +65,8 @@ cron.schedule('* * * * *', async () => {
         izinler.forEach(iz => {
             console.log(`[DEBUG][Kredi Cron] İzinli: ${iz.nobetci_adi} (${iz.baslangic_tarihi} - ${iz.bitis_tarihi}), Gündüz Yedek: ${iz.gunduz_yedek_adi}, Gece Yedek: ${iz.gece_yedek_adi}`);
         });
-        const gorevliNobetci = await getGorevliNobetci(now);
-        if (!gorevliNobetci) return;
+        const { nobetci, vardiya } = await getGorevliNobetci(now);
+        if (!nobetci) return;
         const tumKrediKurallari = await db.getAllKrediKurallari();
         const shiftTimeRanges = await db.getShiftTimeRanges();
         let eklenecekKredi = 0;
@@ -88,9 +88,9 @@ cron.schedule('* * * * *', async () => {
                 eklenecekKredi = 1;
             }
         }
-        const yeniKredi = (gorevliNobetci.kredi || 0) + eklenecekKredi;
-        await db.updateNobetciKredi(gorevliNobetci.id, yeniKredi);
-        logCreditUpdate(`[GÖREVLİ] ${gorevliNobetci.name} kredisi: ${yeniKredi} (+${eklenecekKredi} ${krediSebebi})`);
+        const yeniKredi = (nobetci.kredi || 0) + eklenecekKredi;
+        await db.updateNobetciKredi(nobetci.id, yeniKredi);
+        logCreditUpdate(`[GÖREVLİ] ${nobetci.name} kredisi: ${yeniKredi} (+${eklenecekKredi} ${krediSebebi})`);
     } catch (error) {
         logger.error("[Kredi Cron] Hata:", error);
     }

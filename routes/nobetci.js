@@ -390,10 +390,10 @@ router.get('/gunluk-gorevli', async (req, res) => {
   const result = [];
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
     const currentDate = new Date(d);
-    const gorevli = await calendarUtils.getGorevliNobetci(currentDate);
+    const { nobetci, vardiya } = await calendarUtils.getGorevliNobetci(currentDate);
     result.push({
       tarih: currentDate.toISOString().slice(0, 10),
-      gorevli: gorevli ? { id: gorevli.id, name: gorevli.name } : null
+      gorevli: nobetci ? { id: nobetci.id, name: nobetci.name } : null
     });
   }
   res.json(result);
