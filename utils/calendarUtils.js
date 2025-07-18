@@ -167,13 +167,20 @@ async function getGorevliNobetci(date) {
 
     // 5. İzinli ise, vardiya tipine göre yedek ata
     let yedekId = null;
-    if (aktifVardiya.vardiya_adi && aktifVardiya.vardiya_adi.toLowerCase().includes('gündüz')) {
+    const vardiyaAdi = aktifVardiya.vardiya_adi ? aktifVardiya.vardiya_adi.toLowerCase() : '';
+    if (vardiyaAdi.includes('gündüz')) {
         yedekId = izinKaydi.gunduz_yedek_id;
-    } else if (aktifVardiya.vardiya_adi && aktifVardiya.vardiya_adi.toLowerCase().includes('gece')) {
+    } else if (vardiyaAdi.includes('gece')) {
         yedekId = izinKaydi.gece_yedek_id;
     } else {
-        // Eğer özel bir vardiya adı yoksa, önce gündüz yedeği, yoksa gece yedeği ata
-        yedekId = izinKaydi.gunduz_yedek_id || izinKaydi.gece_yedek_id;
+        // Vardiya adı net değilse, başlangıç saatine göre karar ver
+        if (aktifVardiya.baslangic_saat === '09:00') {
+            yedekId = izinKaydi.gunduz_yedek_id;
+        } else if (aktifVardiya.baslangic_saat === '17:00') {
+            yedekId = izinKaydi.gece_yedek_id;
+        } else {
+            yedekId = izinKaydi.gunduz_yedek_id || izinKaydi.gece_yedek_id;
+        }
     }
     if (yedekId) {
         const yedek = await db.getNobetciById(yedekId);
