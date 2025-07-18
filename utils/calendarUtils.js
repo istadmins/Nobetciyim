@@ -173,13 +173,15 @@ async function getGorevliNobetci(date) {
     } else if (vardiyaAdi.includes('gece')) {
         yedekId = izinKaydi.gece_yedek_id;
     } else {
-        // Vardiya adı net değilse, başlangıç saatine göre karar ver
-        if (aktifVardiya.baslangic_saat === '09:00') {
-            yedekId = izinKaydi.gunduz_yedek_id;
-        } else if (aktifVardiya.baslangic_saat === '17:00') {
+        // Eğer vardiya adı net değilse, aktif vardiya saat aralığı gece vardiyasına denk geliyorsa gece yedeği ata
+        const geceVardiyasi = (
+            (aktifVardiya.baslangic_saat >= '17:00' || aktifVardiya.baslangic_saat < '09:00')
+            || (aktifVardiya.bitis_saat && aktifVardiya.bitis_saat < aktifVardiya.baslangic_saat)
+        );
+        if (geceVardiyasi) {
             yedekId = izinKaydi.gece_yedek_id;
         } else {
-            yedekId = izinKaydi.gunduz_yedek_id || izinKaydi.gece_yedek_id;
+            yedekId = izinKaydi.gunduz_yedek_id;
         }
     }
     if (yedekId) {
