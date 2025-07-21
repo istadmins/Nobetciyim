@@ -75,9 +75,16 @@ async function getAsilHaftalikNobetci(date) {
         }
 
         let nobetciIndex;
-        if (nobetSiralamaAyarlari.aktif &&
-            (yil > nobetSiralamaAyarlari.baslangicYili ||
-             (yil === nobetSiralamaAyarlari.baslangicYili && hafta >= nobetSiralamaAyarlari.baslangicHaftasi))) {
+        const shouldUseResortConfig = nobetSiralamaAyarlari.aktif &&
+            ((yil > nobetSiralamaAyarlari.baslangicYili) ||
+             (yil === nobetSiralamaAyarlari.baslangicYili && hafta > nobetSiralamaAyarlari.baslangicHaftasi));
+        
+        // Debug log
+        if (nobetSiralamaAyarlari.aktif) {
+            console.log(`[DEBUG] Hafta kontrolü: Yıl=${yil}, Hafta=${hafta}, BaşlangıçYılı=${nobetSiralamaAyarlari.baslangicYili}, BaşlangıçHaftası=${nobetSiralamaAyarlari.baslangicHaftasi}, ResortKullanılıyor=${shouldUseResortConfig}`);
+        }
+        
+        if (shouldUseResortConfig) {
             let haftalarFarki = 0;
             if (yil === nobetSiralamaAyarlari.baslangicYili) {
                 haftalarFarki = hafta - nobetSiralamaAyarlari.baslangicHaftasi;
