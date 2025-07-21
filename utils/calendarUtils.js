@@ -132,7 +132,9 @@ async function getAsilHaftalikNobetci(date) {
 
 /**
  * Verilen bir tarih ve saat için aktif vardiyayı ve görevli nöbetçiyi (izin/yedek dahil) döndürür.
- * Vardiya saat aralıkları ve isimleri veritabanından dinamik olarak alınır.
+ * Gündüz nöbetçisi: Sonraki haftanın haftalık nöbetçisi
+ * Gece nöbetçisi: O haftanın haftalık nöbetçisi
+ * İzinli ise ilgili yedek atanır
  * @param {Date} date - Görevli nöbetçinin belirleneceği tarih ve saat.
  * @returns {Promise<{nobetci: Object|null, vardiya: Object|null}>} Görevli nöbetçi ve vardiya nesnesi.
  */
@@ -163,39 +165,57 @@ async function getGorevliNobetci(date) {
     }
     if (!aktifVardiya) return { nobetci: null, vardiya: null };
 
-    // 3. Haftalık asıl nöbetçiyi bul
+    // 3. Haftanın haftalık nöbetçisini bul (gece nöbetçisi)
     const asilNobetci = await getAsilHaftalikNobetci(date);
-    if (!asilNobetci) return { nobetci: null, vardiya: aktifVardiya };
+    // 4. Sonraki haftanın haftalık nöbetçisini bul (gündüz nöbetçisi)
+    const nextWeekDate = new Date(date);
+    nextWeekDate.setDate(date.getDate() + 7);
+    const sonrakiHaftaNobetci = await getAsilHaftalikNobetci(nextWeekDate);
 
-    // 4. O anda izinli mi? (ve yedekler)
+    // 5. O anda izinli mi? (ve yedekler)
     const izinler = await db.getIzinliNobetciVeYedekleri(date);
-    const izinKaydi = izinler.find(iz => iz.nobetci_id === asilNobetci.id);
-    if (!izinKaydi) return { nobetci: asilNobetci, vardiya: aktifVardiya };
-
-    // 5. İzinli ise, vardiya tipine göre yedek ata
+    let gorevliNobetci = null;
+    let izinKaydi = null;
     let yedekId = null;
     const vardiyaAdi = aktifVardiya.vardiya_adi ? aktifVardiya.vardiya_adi.toLowerCase() : '';
     if (vardiyaAdi.includes('gündüz')) {
-        yedekId = izinKaydi.gunduz_yedek_id;
-    } else if (vardiyaAdi.includes('gece')) {
-        yedekId = izinKaydi.gece_yedek_id;
-    } else {
-        // Eğer vardiya adı net değilse, aktif vardiya saat aralığı gece vardiyasına denk geliyorsa gece yedeği ata
-        const geceVardiyasi = (
-            (aktifVardiya.baslangic_saat >= '17:00' || aktifVardiya.baslangic_saat < '09:00')
-            || (aktifVardiya.bitis_saat && aktifVardiya.bitis_saat < aktifVardiya.baslangic_saat)
-        );
-        if (geceVardiyasi) {
-            yedekId = izinKaydi.gece_yedek_id;
-        } else {
+        // Gündüz nöbetçisi: sonraki haftanın haftalık nöbetçisi
+        gorevliNobetci = sonrakiHaftaNobetci;
+        izinKaydi = gorevliNobetci ? izinler.find(iz => iz.nobetci_id === gorevliNobetci.id) : null;
+        if (izinKaydi) {
             yedekId = izinKaydi.gunduz_yedek_id;
         }
+    } else if (vardiyaAdi.includes('gece')) {
+        // Gece nöbetçisi: bu haftanın haftalık nöbetçisi
+        gorevliNobetci = asilNobetci;
+        izinKaydi = gorevliNobetci ? izinler.find(iz => iz.nobetci_id === gorevliNobetci.id) : null;
+        if (izinKaydi) {
+            yedekId = izinKaydi.gece_yedek_id;
+        }
+    } else {
+        // Vardiya adı net değilse, saat aralığına göre karar ver
+        // Gece vardiyası: 17:00 ve sonrası veya 09:00'dan önce
+        if (aktifVardiya.baslangic_saat >= '17:00' || aktifVardiya.baslangic_saat < '09:00') {
+            gorevliNobetci = asilNobetci;
+            izinKaydi = gorevliNobetci ? izinler.find(iz => iz.nobetci_id === gorevliNobetci.id) : null;
+            if (izinKaydi) {
+                yedekId = izinKaydi.gece_yedek_id;
+            }
+        } else {
+            // Gündüz vardiyası
+            gorevliNobetci = sonrakiHaftaNobetci;
+            izinKaydi = gorevliNobetci ? izinler.find(iz => iz.nobetci_id === gorevliNobetci.id) : null;
+            if (izinKaydi) {
+                yedekId = izinKaydi.gunduz_yedek_id;
+            }
+        }
     }
-    if (yedekId) {
+    if (izinKaydi && yedekId) {
         const yedek = await db.getNobetciById(yedekId);
         if (yedek) return { nobetci: yedek, vardiya: aktifVardiya };
     }
-    return { nobetci: null, vardiya: aktifVardiya }; // Yedek de yoksa kimse yok
+    if (gorevliNobetci) return { nobetci: gorevliNobetci, vardiya: aktifVardiya };
+    return { nobetci: null, vardiya: aktifVardiya };
 }
 
 /**
