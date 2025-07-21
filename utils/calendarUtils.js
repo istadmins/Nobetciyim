@@ -182,40 +182,46 @@ async function getGorevliNobetci(date) {
         // Gündüz nöbetçisi: sonraki haftanın haftalık nöbetçisi
         gorevliNobetci = sonrakiHaftaNobetci;
         izinKaydi = gorevliNobetci ? izinler.find(iz => iz.nobetci_id === gorevliNobetci.id) : null;
-        if (izinKaydi) {
-            yedekId = izinKaydi.gunduz_yedek_id;
+        if (izinKaydi && izinKaydi.gunduz_yedek_id) {
+            const yedek = await db.getNobetciById(izinKaydi.gunduz_yedek_id);
+            if (yedek) return { nobetci: yedek, vardiya: aktifVardiya };
         }
+        if (gorevliNobetci) return { nobetci: gorevliNobetci, vardiya: aktifVardiya };
+        return { nobetci: null, vardiya: aktifVardiya };
     } else if (vardiyaAdi.includes('gece')) {
         // Gece nöbetçisi: bu haftanın haftalık nöbetçisi
         gorevliNobetci = asilNobetci;
         izinKaydi = gorevliNobetci ? izinler.find(iz => iz.nobetci_id === gorevliNobetci.id) : null;
-        if (izinKaydi) {
-            yedekId = izinKaydi.gece_yedek_id;
+        if (izinKaydi && izinKaydi.gece_yedek_id) {
+            const yedek = await db.getNobetciById(izinKaydi.gece_yedek_id);
+            if (yedek) return { nobetci: yedek, vardiya: aktifVardiya };
         }
+        if (gorevliNobetci) return { nobetci: gorevliNobetci, vardiya: aktifVardiya };
+        return { nobetci: null, vardiya: aktifVardiya };
     } else {
         // Vardiya adı net değilse, saat aralığına göre karar ver
-        // Gece vardiyası: 17:00 ve sonrası veya 09:00'dan önce
         if (aktifVardiya.baslangic_saat >= '17:00' || aktifVardiya.baslangic_saat < '09:00') {
+            // Gece vardiyası
             gorevliNobetci = asilNobetci;
             izinKaydi = gorevliNobetci ? izinler.find(iz => iz.nobetci_id === gorevliNobetci.id) : null;
-            if (izinKaydi) {
-                yedekId = izinKaydi.gece_yedek_id;
+            if (izinKaydi && izinKaydi.gece_yedek_id) {
+                const yedek = await db.getNobetciById(izinKaydi.gece_yedek_id);
+                if (yedek) return { nobetci: yedek, vardiya: aktifVardiya };
             }
+            if (gorevliNobetci) return { nobetci: gorevliNobetci, vardiya: aktifVardiya };
+            return { nobetci: null, vardiya: aktifVardiya };
         } else {
             // Gündüz vardiyası
             gorevliNobetci = sonrakiHaftaNobetci;
             izinKaydi = gorevliNobetci ? izinler.find(iz => iz.nobetci_id === gorevliNobetci.id) : null;
-            if (izinKaydi) {
-                yedekId = izinKaydi.gunduz_yedek_id;
+            if (izinKaydi && izinKaydi.gunduz_yedek_id) {
+                const yedek = await db.getNobetciById(izinKaydi.gunduz_yedek_id);
+                if (yedek) return { nobetci: yedek, vardiya: aktifVardiya };
             }
+            if (gorevliNobetci) return { nobetci: gorevliNobetci, vardiya: aktifVardiya };
+            return { nobetci: null, vardiya: aktifVardiya };
         }
     }
-    if (izinKaydi && yedekId) {
-        const yedek = await db.getNobetciById(yedekId);
-        if (yedek) return { nobetci: yedek, vardiya: aktifVardiya };
-    }
-    if (gorevliNobetci) return { nobetci: gorevliNobetci, vardiya: aktifVardiya };
-    return { nobetci: null, vardiya: aktifVardiya };
 }
 
 /**
