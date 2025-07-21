@@ -239,6 +239,37 @@ document.addEventListener('DOMContentLoaded', async () => {
         const bugunTarihi = new Date();
         bugunTarihi.setHours(0,0,0,0);
 
+        // İzin bilgilerini açıklamalara ekleyen yardımcı fonksiyon
+        function getIzinAciklamasi(yil, hafta) {
+            const haftaBasi = new Date();
+            haftaBasi.setDate(haftaBasi.getDate() - haftaBasi.getDay() + 1 + (hafta - getWeekOfYear(new Date())) * 7);
+            haftaBasi.setHours(0,0,0,0);
+            const haftaSonu = new Date(haftaBasi);
+            haftaSonu.setDate(haftaBasi.getDate() + 6);
+            haftaSonu.setHours(23,59,59,999);
+
+            const haftaIzinleri = izinler.filter(izin => {
+                const izinBaslangic = new Date(izin.baslangic_tarihi);
+                const izinBitis = new Date(izin.bitis_tarihi);
+                return izinBaslangic <= haftaSonu && izinBitis >= haftaBasi;
+            });
+
+            if (haftaIzinleri.length === 0) return "";
+
+            let izinAciklamasi = "İzinliler: ";
+            haftaIzinleri.forEach((izin, index) => {
+                if (index > 0) izinAciklamasi += ", ";
+                const baslangicTarih = new Date(izin.baslangic_tarihi).toLocaleDateString('tr-TR');
+                const bitisTarih = new Date(izin.bitis_tarihi).toLocaleDateString('tr-TR');
+                const baslangicSaat = new Date(izin.baslangic_tarihi).toLocaleTimeString('tr-TR', {hour: '2-digit', minute: '2-digit'});
+                const bitisSaat = new Date(izin.bitis_tarihi).toLocaleTimeString('tr-TR', {hour: '2-digit', minute: '2-digit'});
+                
+                izinAciklamasi += `${izin.nobetci_adi} (${baslangicTarih} ${baslangicSaat} - ${bitisTarih} ${bitisSaat}, Gündüz Yedek: ${izin.gunduz_yedek_adi}, Gece Yedek: ${izin.gece_yedek_adi})`;
+            });
+
+            return izinAciklamasi;
+        }
+
         for (let i = 0; i < 42; i++) {
             const daySquareDate = new Date(year, month, (i - dayOfWeekOfFirstDay) + 1);
             const daySquareDay = daySquareDate.getDate();
@@ -295,7 +326,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 remarkCell.dataset.week = currentGlobalWeekNumber;
 
                 const haftalikVeri = takvimVerileri.find(d => d.yil === daySquareYear && d.hafta === currentGlobalWeekNumber);
-                remarkCell.textContent = haftalikVeri ? haftalikVeri.aciklama : "";
+                const mevcutAciklama = haftalikVeri ? haftalikVeri.aciklama : "";
+                const izinAciklamasi = getIzinAciklamasi(daySquareYear, currentGlobalWeekNumber);
+                
+                // Mevcut açıklama ve izin bilgilerini birleştir
+                let tamAciklama = mevcutAciklama;
+                if (izinAciklamasi) {
+                    if (tamAciklama) {
+                        tamAciklama += " ";
+                    }
+                    tamAciklama += izinAciklamasi;
+                }
+                remarkCell.textContent = tamAciklama;
 
                 let nobetciAdi = "-";
                 let nobetciIdForDrag = null;
