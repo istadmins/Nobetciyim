@@ -270,7 +270,9 @@
                 <div class="section-title">Nöbetçi Listesi</div>
                 <div class="card-body">
                     <div class="mb-3 text-center">
-                        <button id="baslatKrediDagitimiBtn" class="btn btn-success me-2">Başlat</button>
+                        <button id="baslatKrediDagitimiBtn" class="btn btn-success me-2">
+                            <i class="fa fa-play"></i> Kredi Dağıtımını Başlat
+                        </button>
                     </div>
                     <div class="table-responsive mb-4">
                         <table id="nobetciTable" class="table table-striped table-bordered">
@@ -290,29 +292,31 @@
                         </table>
                     </div>
                     <div class="section-subtitle mb-3" style="text-align:center; font-size:1.1em; font-weight:600; color:#222;">Yeni Nöbetçi Ekle</div>
-                    <form id="nobetciEkleForm" style="max-width: 100%;">
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="name" class="form-label">İsim:</label>
-                                <input type="text" id="name" name="name" class="form-control" placeholder="İsim" required>
+                    <form id="nobetciEkleForm" class="nobetci-ekle-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="name" class="form-label"><i class="fa fa-user"></i> İsim:</label>
+                                <input type="text" id="name" name="name" class="form-control" placeholder="Nöbetçi adını giriniz" required>
                             </div>
-                            <div class="col-md-6">
-                                <label for="password" class="form-label">Şifre:</label>
-                                <input type="password" id="password" name="password" class="form-control" placeholder="Şifre" required>
+                            <div class="form-group">
+                                <label for="password" class="form-label"><i class="fa fa-lock"></i> Şifre:</label>
+                                <input type="password" id="password" name="password" class="form-control" placeholder="Şifre giriniz" required>
                             </div>
                         </div>
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="telegram_id" class="form-label">Telegram Chat ID:</label>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="telegram_id" class="form-label"><i class="fa fa-telegram"></i> Telegram Chat ID:</label>
                                 <input type="text" id="telegram_id" name="telegram_id" class="form-control" placeholder="Telegram Chat ID (isteğe bağlı)">
                             </div>
-                            <div class="col-md-6">
-                                <label for="telefon_no" class="form-label">Telefon Numarası:</label>
-                                <input type="text" id="telefon_no" name="telefon_no" class="form-control" placeholder="Telefon Numarası (isteğe bağlı)">
+                            <div class="form-group">
+                                <label for="telefon_no" class="form-label"><i class="fa fa-phone"></i> Telefon Numarası:</label>
+                                <input type="text" id="telefon_no" name="telefon_no" class="form-control" placeholder="Telefon numarası (isteğe bağlı)">
                             </div>
                         </div>
-                        <div class="text-center">
-                            <button type="submit" class="btn btn-primary">Ekle</button>
+                        <div class="form-submit">
+                            <button type="submit" class="btn btn-primary btn-add-nobetci">
+                                <i class="fa fa-plus"></i> Nöbetçi Ekle
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -351,7 +355,9 @@
                             <label for="yeniKuralTarih">Tarih:</label>
                             <input type="date" id="yeniKuralTarih" required>
                         </div>
-                        <button type="submit" class="btn btn-primary">Yeni Kural Ekle</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa fa-plus"></i> Yeni Kural Ekle
+                        </button>
                     </form>
                 </div>
             </div>
@@ -375,8 +381,12 @@
                                 </tbody>
                         </table>
                     </div>
-                    <button id="zaman-kredilerini-kaydet" class="btn btn-secondary">Değişiklikleri Kaydet</button>
-                    <button id="yeniSatirEkleBtn" class="btn btn-info">Yeni Saat Aralığı Ekle</button>
+                    <button id="zaman-kredilerini-kaydet" class="btn btn-secondary">
+                        <i class="fa fa-save"></i> Değişiklikleri Kaydet
+                    </button>
+                    <button id="yeniSatirEkleBtn" class="btn btn-info">
+                        <i class="fa fa-plus"></i> Yeni Saat Aralığı Ekle
+                    </button>
                 </div>
             </div>
         </section>
@@ -385,7 +395,9 @@
             <div class="card mb-4">
                 <div class="card-header"><span class="card-title">Nöbetçi İzinleri</span></div>
                 <div class="card-body">
-                    <button id="izinEkleBtn" class="btn btn-primary">Ekle</button>
+                    <button id="izinEkleBtn" class="btn btn-primary">
+                        <i class="fa fa-plus"></i> İzin Ekle
+                    </button>
                     <div id="izinFormu" style="display:none; margin-top: 16px; margin-bottom: 16px;">
                         <!-- Form alanları JS ile doldurulacak -->
                     </div>
@@ -413,7 +425,9 @@
                 <div class="card-header"><span class="card-title">Nöbet Takvimi</span></div>
                 <div class="card-body">
                     <div style="text-align: center; margin-bottom: 10px;">
-                        <button id="yenidenSiralaBtn" class="btn btn-primary" style="padding: 8px 12px; font-size: 0.9em;">Nöbetçileri Yeniden Sırala (Gelecek Haftadan)</button>
+                        <button id="yenidenSiralaBtn" class="btn btn-primary" style="padding: 8px 12px; font-size: 0.9em;">
+                            <i class="fa fa-refresh"></i> Nöbetçileri Yeniden Sırala (Gelecek Haftadan)
+                        </button>
                     </div>
                     <div class="calendar-controls">
                         <button id="prevMonthBtn"><i class="fa fa-chevron-left"></i> Önceki Ay</button>
