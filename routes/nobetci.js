@@ -4,6 +4,13 @@ const db = require('../db');
 const bcrypt = require('bcryptjs');
 const axios = require('axios');
 const nodemailer = require('nodemailer');
+const logger = require('../utils/logger');
+const { validationRules, validate, sanitizeInput } = require('../utils/validation');
+const { 
+    authenticateToken, 
+    requireAdmin, 
+    passwordResetLimiter 
+} = require('../middleware/security');
 
 // --- Telegram Bildirim Fonksiyonu ---
 async function sendTelegramNotificationForActiveGuardChange(newActiveGuardName) {
@@ -37,7 +44,7 @@ function generateRandomPassword(length = 8) {
 }
 
 // Şifre Sıfırlama - YÖNLENDİRMENİZLE TAMAMEN DÜZELTİLMİŞ NİHAİ HALİ
-router.post('/reset-admin-password', (req, res) => {
+router.post('/reset-admin-password', passwordResetLimiter, authenticateToken, requireAdmin, (req, res) => {
     const adminUsername = 'admin';
 
     // 1. Adım: Admin kullanıcısının e-posta adresini de veritabanından al.
@@ -92,7 +99,7 @@ router.post('/reset-admin-password', (req, res) => {
 });
 
 // Şifre Sıfırlama (Her nöbetçi için)
-router.post('/reset-password/:id', async (req, res) => {
+router.post('/reset-password/:id', passwordResetLimiter, authenticateToken, requireAdmin, validationRules.id, validate, async (req, res) => {
     const nobetciId = parseInt(req.params.id);
     if (isNaN(nobetciId)) {
         return res.status(400).json({ error: 'Geçersiz nöbetçi ID.' });

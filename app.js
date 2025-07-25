@@ -5,24 +5,16 @@ const path = require('path');
 const cors = require('cors');
 require('dotenv').config();
 
-// Simple console logger fallback
-const logger = {
-  info: (msg, ...args) => console.log(`[INFO] ${msg}`, ...args),
-  error: (msg, ...args) => console.error(`[ERROR] ${msg}`, ...args),
-  warn: (msg, ...args) => console.warn(`[WARN] ${msg}`, ...args),
-  debug: (msg, ...args) => console.log(`[DEBUG] ${msg}`, ...args)
-};
-
-// Import middleware (simplified)
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
-
-// Simple rate limiter
-const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: { success: false, error: 'Çok fazla istek gönderildi' }
-});
+// Import utilities and middleware
+const logger = require('./utils/logger');
+const {
+  generalLimiter,
+  authLimiter,
+  passwordResetLimiter,
+  securityHeaders,
+  requestLogger,
+  errorHandler
+} = require('./middleware/security');
 
 // Route dosyalarını çağır
 const authRoutes = require('./routes/auth');
@@ -37,15 +29,22 @@ const app = express();
 // Trust proxy for rate limiting and IP detection
 app.set('trust proxy', 1);
 
+// Request logging middleware
+app.use(requestLogger);
+
 // Security middleware
-app.use(helmet());
+app.use(securityHeaders);
 
 // CORS configuration
-app.use(cors());
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : '*',
+  credentials: true,
+  optionsSuccessStatus: 200
+}));
 
-// Body parsing middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Body parsing middleware with limits
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Rate limiting
 app.use(generalLimiter);
@@ -84,20 +83,18 @@ app.get('/health', (req, res) => {
 
 // 404 handler
 app.use('*', (req, res) => {
+  logger.warn(`404 - Endpoint not found: ${req.method} ${req.originalUrl}`, {
+    ip: req.ip,
+    userAgent: req.get('User-Agent')
+  });
   res.status(404).json({ 
     success: false, 
     error: 'Endpoint bulunamadı' 
   });
 });
 
-// Simple error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Error:', err);
-  res.status(500).json({
-    success: false,
-    error: 'Sunucu hatası oluştu'
-  });
-});
+// Enhanced error handling middleware
+app.use(errorHandler);
 
 // Start server
 const PORT = process.env.PORT || 80;
