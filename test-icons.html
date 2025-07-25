@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simge Testi</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="public/css/style.css">
+    <style>
+        body {
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .btn {
+            margin: 5px;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            color: white;
+        }
+        .btn-info { background-color: #17a2b8; }
+        .btn-secondary { background-color: #6c757d; }
+        .btn-warning { background-color: #ffc107; color: #212529; }
+        .btn-danger { background-color: #dc3545; }
+        .btn-primary { background-color: #007bff; }
+    </style>
+</head>
+<body>
+    <h1>Font Awesome Simge Testi</h1>
+    
+    <div class="test-section">
+        <h2>Tablo Butonları (Font Awesome 4.7)</h2>
+        <button class="btn btn-info"><i class="fa fa-telegram"></i> Telegram</button>
+        <button class="btn btn-secondary"><i class="fa fa-phone"></i> Telefon</button>
+        <button class="btn btn-warning"><i class="fa fa-key"></i> Şifre</button>
+        <button class="btn btn-danger"><i class="fa fa-trash"></i> Sil</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Form Butonları</h2>
+        <button class="btn btn-primary"><i class="fa fa-user"></i> Kullanıcı</button>
+        <button class="btn btn-primary"><i class="fa fa-lock"></i> Kilit</button>
+        <button class="btn btn-primary"><i class="fa fa-plus"></i> Ekle</button>
+        <button class="btn btn-primary"><i class="fa fa-save"></i> Kaydet</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Navigasyon Butonları</h2>
+        <button class="btn btn-primary"><i class="fa fa-chevron-left"></i> Önceki</button>
+        <button class="btn btn-primary"><i class="fa fa-chevron-right"></i> Sonraki</button>
+        <button class="btn btn-primary"><i class="fa fa-refresh"></i> Yenile</button>
+        <button class="btn btn-primary"><i class="fa fa-play"></i> Başlat</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Font Awesome 6 Simgeleri</h2>
+        <button class="btn btn-info"><i class="fas fa-paper-plane"></i> Telegram (FA6)</button>
+        <button class="btn btn-secondary"><i class="fas fa-phone"></i> Telefon (FA6)</button>
+        <button class="btn btn-warning"><i class="fas fa-key"></i> Anahtar (FA6)</button>
+        <button class="btn btn-danger"><i class="fas fa-trash"></i> Çöp (FA6)</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Sadece Simgeler (Tablo Stili)</h2>
+        <button class="btn btn-info btn-sm"><i class="fa fa-telegram"></i></button>
+        <button class="btn btn-secondary btn-sm"><i class="fa fa-phone"></i></button>
+        <button class="btn btn-warning btn-sm"><i class="fa fa-key"></i></button>
+        <button class="btn btn-danger btn-sm"><i class="fa fa-trash"></i></button>
+    </div>
+    
+    <script>
+        // Font Awesome yüklenip yüklenmediğini kontrol et
+        window.addEventListener('load', function() {
+            const testElement = document.createElement('i');
+            testElement.className = 'fa fa-user';
+            testElement.style.position = 'absolute';
+            testElement.style.left = '-9999px';
+            document.body.appendChild(testElement);
+            
+            const computedStyle = window.getComputedStyle(testElement, ':before');
+            const content = computedStyle.getPropertyValue('content');
+            
+            if (content && content !== 'none' && content !== '""') {
+                console.log('Font Awesome yüklendi:', content);
+            } else {
+                console.log('Font Awesome yüklenemedi, fallback kullanılacak');
+            }
+            
+            document.body.removeChild(testElement);
+        });
+    </script>
+</body>
+</html>

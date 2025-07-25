@@ -606,3 +606,220 @@ footer {
   font-size: 11px;
   min-width: 32px;
 }
+
+/* Font Awesome simgelerinin görünmesini sağla */
+.fa, .fas, .far, .fal, .fab {
+  font-family: "Font Awesome 6 Free", "Font Awesome 4", FontAwesome !important;
+  font-weight: 900 !important;
+  display: inline-block !important;
+  font-style: normal !important;
+  font-variant: normal !important;
+  text-rendering: auto !important;
+  line-height: 1 !important;
+}
+
+/* Telegram simgesi için özel stil */
+.fa-telegram:before {
+  content: "\f2c6" !important;
+}
+
+/* Telefon simgesi için özel stil */
+.fa-phone:before {
+  content: "\f095" !important;
+}
+
+/* Anahtar simgesi için özel stil */
+.fa-key:before {
+  content: "\f084" !important;
+}
+
+/* Çöp kutusu simgesi için özel stil */
+.fa-trash:before {
+  content: "\f1f8" !important;
+}
+
+/* Diğer simgeler */
+.fa-user:before {
+  content: "\f007" !important;
+}
+
+.fa-lock:before {
+  content: "\f023" !important;
+}
+
+.fa-plus:before {
+  content: "\f067" !important;
+}
+
+.fa-save:before {
+  content: "\f0c7" !important;
+}
+
+.fa-refresh:before {
+  content: "\f021" !important;
+}
+
+.fa-chevron-left:before {
+  content: "\f053" !important;
+}
+
+.fa-chevron-right:before {
+  content: "\f054" !important;
+}
+
+.fa-play:before {
+  content: "\f04b" !important;
+}
+
+.fa-pencil:before {
+  content: "\f040" !important;
+}
+
+/* Butonlardaki simgelerin görünmesini zorla */
+#nobetciTable .btn i,
+.btn i {
+  display: inline-block !important;
+  font-family: "Font Awesome 6 Free", "Font Awesome 4", FontAwesome !important;
+  font-weight: 900 !important;
+  font-style: normal !important;
+  margin-right: 5px;
+}
+
+/* Sadece simge olan butonlar için margin kaldır */
+#nobetciTable .btn-sm i {
+  margin-right: 0 !important;
+}
+
+/* Fallback: Eğer Font Awesome yüklenmezse Unicode simgeler kullan */
+.fa-telegram:before {
+  content: "\f2c6";
+}
+
+.fa-telegram:after {
+  content: "📱";
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+}
+
+.fa-phone:after {
+  content: "📞";
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+}
+
+.fa-key:after {
+  content: "🔑";
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+}
+
+.fa-trash:after {
+  content: "🗑️";
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+}
+
+.fa-user:after {
+  content: "👤";
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+}
+
+.fa-lock:after {
+  content: "🔒";
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+}
+
+.fa-plus:after {
+  content: "➕";
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+}
+
+.fa-save:after {
+  content: "💾";
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+}
+
+.fa-refresh:after {
+  content: "🔄";
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+}
+
+.fa-play:after {
+  content: "▶️";
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+}
+
+.fa-pencil:after {
+  content: "✏️";
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+}
+
+.fa-chevron-left:after {
+  content: "◀️";
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+}
+
+.fa-chevron-right:after {
+  content: "▶️";
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+}
+
+/* Font Awesome yüklenmediyse emoji'leri göster */
+@supports not (font-family: "Font Awesome 6 Free") {
+  .fa:before {
+    display: none !important;
+  }
+  
+  .fa:after {
+    display: inline-block !important;
+    font-size: 14px;
+  }
+}
+
+/* Simgelerin kesinlikle görünmesini sağla - En güçlü kurallar */
+.fa, .fas, .far, .fab, .fal {
+  font-family: "Font Awesome 6 Free", "Font Awesome 4", "FontAwesome" !important;
+  font-style: normal !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  text-decoration: inherit !important;
+  text-rendering: auto !important;
+  text-transform: none !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  -webkit-font-smoothing: antialiased !important;
+  display: inline-block !important;
+}
+
+/* Tablo butonlarındaki simgelerin görünmesini zorla */
+#nobetciTable button i,
+#kurallarTablosu button i,
+#zaman-kredi-tablosu button i,
+.btn i {
+  font-family: "Font Awesome 6 Free", "Font Awesome 4", "FontAwesome" !important;
+  font-weight: 900 !important;
+  font-style: normal !important;
+  display: inline-block !important;
+  text-rendering: auto !important;
+  -webkit-font-smoothing: antialiased !important;
+}
+
+/* Eğer Font Awesome çalışmazsa, text fallback kullan */
+.fa-telegram:empty:before { content: "📱"; }
+.fa-phone:empty:before { content: "📞"; }
+.fa-key:empty:before { content: "🔑"; }
+.fa-trash:empty:before { content: "🗑"; }
+.fa-user:empty:before { content: "👤"; }
+.fa-lock:empty:before { content: "🔒"; }
+.fa-plus:empty:before { content: "➕"; }
+.fa-save:empty:before { content: "💾"; }
+.fa-refresh:empty:before { content: "🔄"; }
+.fa-play:empty:before { content: "▶"; }
+.fa-pencil:empty:before { content: "✏"; }
+.fa-chevron-left:empty:before { content: "◀"; }
+.fa-chevron-right:empty:before { content: "▶"; }
+
+/* Tabler CSS ile çakışmaları önle */
+.btn i[class*="fa-"] {
+  font-family: "Font Awesome 6 Free", "Font Awesome 4", "FontAwesome" !important;
+}
+
+/* Bootstrap ile çakışmaları önle */
+.table .btn i {
+  font-family: "Font Awesome 6 Free", "Font Awesome 4", "FontAwesome" !important;
+}
