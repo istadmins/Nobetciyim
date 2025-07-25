@@ -172,55 +172,71 @@ async function getGorevliNobetci(date) {
     nextWeekDate.setDate(date.getDate() + 7);
     const sonrakiHaftaNobetci = await getAsilHaftalikNobetci(nextWeekDate);
 
-    // 5. O anda izinli mi? (ve yedekler)
+    // 5. Nöbetçi atama kuralları
     const izinler = await db.getIzinliNobetciVeYedekleri(date);
     let gorevliNobetci = null;
     let izinKaydi = null;
-    let yedekId = null;
+    
+    // Vardiya tipini belirle
     const vardiyaAdi = aktifVardiya.vardiya_adi ? aktifVardiya.vardiya_adi.toLowerCase() : '';
-    if (vardiyaAdi.includes('gündüz')) {
-        // Gündüz nöbetçisi: sonraki haftanın haftalık nöbetçisi
+    const isGunduzVardiya = vardiyaAdi.includes('gündüz') || 
+                           vardiyaAdi.includes('sabah') ||
+                           (aktifVardiya.baslangic_saat >= '09:00' && aktifVardiya.baslangic_saat < '17:00');
+    
+    const isGeceVardiya = vardiyaAdi.includes('gece') || 
+                         vardiyaAdi.includes('akşam') ||
+                         (aktifVardiya.baslangic_saat >= '17:00' || aktifVardiya.baslangic_saat < '09:00');
+
+    if (isGunduzVardiya) {
+        // KURAL 2: Gündüz nöbetçisi = Sonraki haftanın haftalık nöbetçisi
         gorevliNobetci = sonrakiHaftaNobetci;
         izinKaydi = gorevliNobetci ? izinler.find(iz => iz.nobetci_id === gorevliNobetci.id) : null;
+        
+        // KURAL 5: İzinliyse gündüz yedek ata
         if (izinKaydi && izinKaydi.gunduz_yedek_id) {
             const yedek = await db.getNobetciById(izinKaydi.gunduz_yedek_id);
             if (yedek) return { nobetci: yedek, vardiya: aktifVardiya };
         }
+        
         if (gorevliNobetci) return { nobetci: gorevliNobetci, vardiya: aktifVardiya };
         return { nobetci: null, vardiya: aktifVardiya };
-    } else if (vardiyaAdi.includes('gece')) {
-        // Gece nöbetçisi: bu haftanın haftalık nöbetçisi
+        
+    } else if (isGeceVardiya) {
+        // KURAL 1: Gece nöbetçisi = Bu haftanın haftalık nöbetçisi
         gorevliNobetci = asilNobetci;
         izinKaydi = gorevliNobetci ? izinler.find(iz => iz.nobetci_id === gorevliNobetci.id) : null;
+        
+        // KURAL 4: İzinliyse gece yedek ata
         if (izinKaydi && izinKaydi.gece_yedek_id) {
             const yedek = await db.getNobetciById(izinKaydi.gece_yedek_id);
             if (yedek) return { nobetci: yedek, vardiya: aktifVardiya };
         }
+        
         if (gorevliNobetci) return { nobetci: gorevliNobetci, vardiya: aktifVardiya };
         return { nobetci: null, vardiya: aktifVardiya };
+        
     } else {
-        // Vardiya adı net değilse, saat aralığına göre karar ver
+        // Varsayılan: Saat aralığına göre karar ver
         if (aktifVardiya.baslangic_saat >= '17:00' || aktifVardiya.baslangic_saat < '09:00') {
-            // Gece vardiyası
+            // Gece vardiyası olarak değerlendir
             gorevliNobetci = asilNobetci;
             izinKaydi = gorevliNobetci ? izinler.find(iz => iz.nobetci_id === gorevliNobetci.id) : null;
             if (izinKaydi && izinKaydi.gece_yedek_id) {
                 const yedek = await db.getNobetciById(izinKaydi.gece_yedek_id);
                 if (yedek) return { nobetci: yedek, vardiya: aktifVardiya };
             }
-            if (gorevliNobetci) return { nobetci: gorevliNobetci, vardiya: aktifVardiya };
-            return { nobetci: null, vardiya: aktifVardiya };
         } else {
-            // Gündüz vardiyası
+            // Gündüz vardiyası olarak değerlendir
             gorevliNobetci = sonrakiHaftaNobetci;
             izinKaydi = gorevliNobetci ? izinler.find(iz => iz.nobetci_id === gorevliNobetci.id) : null;
             if (izinKaydi && izinKaydi.gunduz_yedek_id) {
                 const yedek = await db.getNobetciById(izinKaydi.gunduz_yedek_id);
                 if (yedek) return { nobetci: yedek, vardiya: aktifVardiya };
             }
-            if (gorevliNobetci) return { nobetci: gorevliNobetci, vardiya: aktifVardiya };
-            return { nobetci: null, vardiya: aktifVardiya };
         }
+        
+        if (gorevliNobetci) return { nobetci: gorevliNobetci, vardiya: aktifVardiya };
+        return { nobetci: null, vardiya: aktifVardiya };
     }
 }
 

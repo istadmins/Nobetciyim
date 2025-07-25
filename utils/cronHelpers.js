@@ -66,15 +66,15 @@ function isTimeInInterval(dateObj, startTimeStr, endTimeStr) {
  */
 async function determineActiveGuard(db, getGorevliNobetci, now) {
     try {
-        // İzinli kayıtları al
+        // İzinli kay��tları al
         const izinler = await db.getIzinliNobetciVeYedekleri(now);
         logger.debug(`[Cron Helper] İzinli kayıtları: ${izinler.length} adet`);
         
-        // Gerçek görevli nöbetçiyi bul
+        // Gerçek görevli nöbetçiyi bul (vardiya bilgisi dahil)
         const { nobetci: gercekGorevli, vardiya } = await getGorevliNobetci(now);
         if (!gercekGorevli) {
             logger.warn('[Cron Helper] Gerçek görevli nöbetçi bulunamadı');
-            return { gorevliNobetci: null, gorevliKaynak: null, overrideTemizlendi: false };
+            return { gorevliNobetci: null, gorevliKaynak: null, overrideTemizlendi: false, vardiya: null };
         }
 
         // Override kontrolü
@@ -93,10 +93,18 @@ async function determineActiveGuard(db, getGorevliNobetci, now) {
                     gorevliNobetci = overrideNobetci;
                     gorevliKaynak = 'override';
                 } else {
-                    // Override'daki kişi izinli, override'ı temizle
+                    // Override'daki kişi izinli, override'ı temizle ve yedek ata
                     await db.clearAktifNobetciOverride();
                     overrideTemizlendi = true;
                     logger.info(`[Cron Helper] Override temizlendi: ${overrideNobetci.name} izinli olduğu için`);
+                    
+                    // İzinli kişi için yedek ata
+                    const yedekNobetci = await getBackupGuard(db, izinKaydi, vardiya);
+                    if (yedekNobetci) {
+                        gorevliNobetci = yedekNobetci;
+                        gorevliKaynak = 'yedek';
+                        logger.info(`[Cron Helper] İzinli ${overrideNobetci.name} yerine yedek ${yedekNobetci.name} atandı`);
+                    }
                 }
             } else {
                 // Override'daki ID geçersiz, temizle
@@ -106,10 +114,61 @@ async function determineActiveGuard(db, getGorevliNobetci, now) {
             }
         }
 
-        return { gorevliNobetci, gorevliKaynak, overrideTemizlendi };
+        // Gerçek görevli nöbetçi izinli mi kontrol et
+        if (gorevliKaynak === 'otomatik') {
+            const izinKaydi = izinler.find(iz => iz.nobetci_id === gercekGorevli.id);
+            if (izinKaydi) {
+                // Gerçek görevli izinli, yedek ata
+                const yedekNobetci = await getBackupGuard(db, izinKaydi, vardiya);
+                if (yedekNobetci) {
+                    gorevliNobetci = yedekNobetci;
+                    gorevliKaynak = 'yedek';
+                    logger.info(`[Cron Helper] İzinli ${gercekGorevli.name} yerine yedek ${yedekNobetci.name} atandı`);
+                }
+            }
+        }
+
+        return { gorevliNobetci, gorevliKaynak, overrideTemizlendi, vardiya };
     } catch (error) {
         logger.error('[Cron Helper] Görevli nöbetçi belirlenirken hata:', error);
         throw error;
+    }
+}
+
+/**
+ * İzin kaydına göre uygun yedek nöbetçiyi bulur
+ */
+async function getBackupGuard(db, izinKaydi, vardiya) {
+    try {
+        let yedekId = null;
+        
+        if (vardiya) {
+            const vardiyaAdi = vardiya.vardiya_adi ? vardiya.vardiya_adi.toLowerCase() : '';
+            
+            // Vardiya adına göre yedek belirleme
+            if (vardiyaAdi.includes('gündüz') || vardiyaAdi.includes('sabah')) {
+                yedekId = izinKaydi.gunduz_yedek_id;
+            } else if (vardiyaAdi.includes('gece') || vardiyaAdi.includes('akşam')) {
+                yedekId = izinKaydi.gece_yedek_id;
+            } else {
+                // Vardiya adı net değilse, saat aralığına göre karar ver
+                if (vardiya.baslangic_saat >= '09:00' && vardiya.baslangic_saat < '17:00') {
+                    yedekId = izinKaydi.gunduz_yedek_id;
+                } else {
+                    yedekId = izinKaydi.gece_yedek_id;
+                }
+            }
+        }
+        
+        if (yedekId) {
+            const yedekNobetci = await db.getNobetciById(yedekId);
+            return yedekNobetci;
+        }
+        
+        return null;
+    } catch (error) {
+        logger.error('[Cron Helper] Yedek nöbetçi bulunurken hata:', error);
+        return null;
     }
 }
 
@@ -186,6 +245,7 @@ module.exports = {
     anlikOzelGunKredisiAl,
     isTimeInInterval,
     determineActiveGuard,
+    getBackupGuard,
     calculateCredit,
     updateActiveGuard
 };

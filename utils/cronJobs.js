@@ -17,14 +17,14 @@ class CronJobManager {
     }
 
     /**
-     * Dakikalık kredi güncelleme cron job'ı
+     * Dakikalık kredi güncelleme ve nöbetçi kontrol cron job'ı
      */
     setupCreditUpdateJob() {
         const job = cron.schedule('* * * * *', async () => {
             const now = new Date();
             try {
-                // Görevli nöbetçiyi belirle
-                const { gorevliNobetci, gorevliKaynak, overrideTemizlendi } = 
+                // 1. Görevli nöbetçiyi belirle (izin kontrolü dahil)
+                const { gorevliNobetci, gorevliKaynak, overrideTemizlendi, vardiya } = 
                     await determineActiveGuard(this.db, this.calendarUtils.getGorevliNobetci, now);
 
                 if (!gorevliNobetci) {
@@ -32,7 +32,13 @@ class CronJobManager {
                     return;
                 }
 
-                // Aktif nöbetçiyi güncelle
+                // 2. Kaçırılan vardiya değişimlerini kontrol et
+                await this.checkMissedShiftChanges();
+
+                // 3. İzinli kişiye yanlışlıkla atama yapılmış mı kontrol et
+                await this.checkAndFixIncorrectAssignment(now, gorevliNobetci, vardiya);
+
+                // 4. Aktif nöbetçiyi güncelle
                 await updateActiveGuard(
                     this.db, 
                     gorevliNobetci, 
@@ -41,7 +47,7 @@ class CronJobManager {
                     this.telegramBotHandler.notifyAllOfDutyChange
                 );
 
-                // Kredi hesaplama ve güncelleme
+                // 4. Kredi hesaplama ve güncelleme
                 const tumKrediKurallari = await this.db.getAllKrediKurallari();
                 const shiftTimeRanges = await this.db.getShiftTimeRanges();
                 
@@ -68,6 +74,57 @@ class CronJobManager {
 
         this.jobs.set('creditUpdate', job);
         return job;
+    }
+
+    /**
+     * İzinli kişiye yanlışlıkla atama yapılmış mı kontrol eder ve düzeltir
+     */
+    async checkAndFixIncorrectAssignment(now, currentGuard, vardiya) {
+        try {
+            // Mevcut aktif nöbetçiyi al
+            const activeGuard = await this.db.getAktifNobetci();
+            if (!activeGuard) return;
+
+            // İzinli kayıtları kontrol et
+            const izinler = await this.db.getIzinliNobetciVeYedekleri(now);
+            const izinKaydi = izinler.find(iz => iz.nobetci_id === activeGuard.id);
+
+            if (izinKaydi) {
+                // Aktif nöbetçi izinli! Yedek atanmalı
+                let yedekId = null;
+                let vardiyaTipi = '';
+
+                if (vardiya) {
+                    const vardiyaAdi = vardiya.vardiya_adi ? vardiya.vardiya_adi.toLowerCase() : '';
+                    if (vardiyaAdi.includes('gündüz') || 
+                        (vardiya.baslangic_saat >= '09:00' && vardiya.baslangic_saat < '17:00')) {
+                        yedekId = izinKaydi.gunduz_yedek_id;
+                        vardiyaTipi = 'gündüz';
+                    } else if (vardiyaAdi.includes('gece') || 
+                               (vardiya.baslangic_saat >= '17:00' || vardiya.baslangic_saat < '09:00')) {
+                        yedekId = izinKaydi.gece_yedek_id;
+                        vardiyaTipi = 'gece';
+                    }
+                }
+
+                if (yedekId) {
+                    const yedekNobetci = await this.db.getNobetciById(yedekId);
+                    if (yedekNobetci) {
+                        await this.db.setAktifNobetci(yedekId);
+                        logger.info(`[İzin Kontrolü] İzinli ${activeGuard.name} yerine ${vardiyaTipi} yedek ${yedekNobetci.name} atandı`);
+                        
+                        if (typeof this.telegramBotHandler.notifyAllOfDutyChange === 'function') {
+                            await this.telegramBotHandler.notifyAllOfDutyChange(
+                                yedekNobetci.name, 
+                                `İzin Nedeniyle Yedek Atama (${vardiyaTipi})`
+                            );
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            logger.error('[İzin Kontrolü] Hata:', error);
+        }
     }
 
     /**
@@ -188,11 +245,21 @@ class CronJobManager {
             const now = new Date();
             
             // Görevli nöbetçiyi belirle
-            const { gorevliNobetci, gorevliKaynak, overrideTemizlendi } = 
+            const { gorevliNobetci, gorevliKaynak, overrideTemizlendi, vardiya } = 
                 await determineActiveGuard(this.db, this.calendarUtils.getGorevliNobetci, now);
 
             if (!gorevliNobetci) {
                 logger.warn(`[${shiftName}] Görevli nöbetçi bulunamadı`);
+                return;
+            }
+
+            // Manuel değişiklik korunması kontrolü
+            const currentActive = await this.db.getAktifNobetci();
+            const override = await this.db.getAktifNobetciOverride();
+            
+            // Eğer manuel atama varsa ve izinli değilse, manuel atamayı koru
+            if (override && override.nobetci_id && gorevliKaynak === 'override') {
+                logger.info(`[${shiftName}] Manuel atama korunuyor: ${gorevliNobetci.name}`);
                 return;
             }
 
@@ -211,14 +278,51 @@ class CronJobManager {
                     bildirimSebebi = `${shiftName} Değişimi (İzin Nedeniyle)`;
                 } else if (gorevliKaynak === 'override') {
                     bildirimSebebi = `${shiftName} (Manuel Atama Devam)`;
+                } else if (gorevliKaynak === 'yedek') {
+                    bildirimSebebi = `${shiftName} Değişimi (Yedek Atama)`;
                 }
                 
                 if (typeof this.telegramBotHandler.notifyAllOfDutyChange === 'function') {
                     await this.telegramBotHandler.notifyAllOfDutyChange(gorevliNobetci.name, bildirimSebebi);
                 }
+                
+                logger.info(`[${shiftName}] Vardiya değişimi tamamlandı: ${gorevliNobetci.name} (${gorevliKaynak})`);
+            } else {
+                logger.debug(`[${shiftName}] Vardiya değişimi gerekmedi, mevcut nöbetçi: ${currentActive?.name || 'Bilinmiyor'}`);
             }
         } catch (error) {
             logger.error(`[${shiftName}] Cron hatası:`, error);
+        }
+    }
+
+    /**
+     * Kaçırılan vardiya değişimlerini kontrol eder ve düzeltir
+     */
+    async checkMissedShiftChanges() {
+        try {
+            const now = new Date();
+            const shiftTimeRanges = await this.db.getShiftTimeRanges();
+            
+            if (!shiftTimeRanges || shiftTimeRanges.length === 0) return;
+
+            for (const shift of shiftTimeRanges) {
+                const [hour, minute] = shift.baslangic_saat.split(':').map(Number);
+                const shiftStartTime = new Date(now);
+                shiftStartTime.setHours(hour, minute, 0, 0);
+                
+                // Son 10 dakika içinde başlayan vardiya var mı?
+                const timeDiff = now.getTime() - shiftStartTime.getTime();
+                if (timeDiff > 0 && timeDiff <= 10 * 60 * 1000) { // 10 dakika
+                    logger.info(`[Kaçırılan Vardiya] ${shift.vardiya_adi || 'Vardiya'} kontrolü yapılıyor...`);
+                    
+                    const shiftName = shift.vardiya_adi || 
+                                    (shift.baslangic_saat >= '17:00' || shift.baslangic_saat < '09:00' ? 'Gece Vardiya' : 'Gündüz Vardiya');
+                    
+                    await this.handleShiftChange(shiftName, shift.baslangic_saat);
+                }
+            }
+        } catch (error) {
+            logger.error('[Kaçırılan Vardiya] Kontrol hatası:', error);
         }
     }
 

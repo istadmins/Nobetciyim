@@ -11,7 +11,16 @@ function updateTimeRowControls() {
     const addBtn = document.getElementById('yeniSatirEkleBtn');
 
     if (addBtn) {
-        addBtn.disabled = (dataRows.length >= 2);
+        // İki vardiya ekliyse yeni vardiya eklenmesini engelle
+        if (dataRows.length >= 2) {
+            addBtn.disabled = true;
+            addBtn.style.display = 'none';
+            addBtn.title = 'Maksimum 2 vardiya tanımlanabilir';
+        } else {
+            addBtn.disabled = false;
+            addBtn.style.display = '';
+            addBtn.title = 'Yeni Saat Aralığı Ekle';
+        }
     }
 
     dataRows.forEach((row, index) => {
