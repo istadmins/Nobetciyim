@@ -1,0 +1,40 @@
+/* Daha sade ve profesyonel buton renkleri */
+#nobetciTable .btn-info {
+  background-color: #5a6c7d !important;
+  border-color: #4a5a6b !important;
+}
+
+#nobetciTable .btn-info:hover {
+  background-color: #4a5a6b !important;
+  border-color: #3a4a5b !important;
+}
+
+#nobetciTable .btn-warning {
+  background-color: #856404 !important;
+  color: white !important;
+  border-color: #6c5103 !important;
+}
+
+#nobetciTable .btn-warning:hover {
+  background-color: #6c5103 !important;
+  border-color: #5a4103 !important;
+}
+
+#nobetciTable .btn-danger {
+  background-color: #721c24 !important;
+  border-color: #5a161c !important;
+}
+
+#nobetciTable .btn-danger:hover {
+  background-color: #5a161c !important;
+  border-color: #4a1216 !important;
+}
+
+/* Simgelerin sade görünümü */
+#nobetciTable .btn i {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+#nobetciTable .btn:hover i {
+  color: white !important;
+}

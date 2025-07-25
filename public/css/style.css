@@ -690,87 +690,20 @@ footer {
   margin-right: 0 !important;
 }
 
-/* Fallback: Eğer Font Awesome yüklenmezse Unicode simgeler kullan */
-.fa-telegram:before {
-  content: "\f2c6";
-}
-
-.fa-telegram:after {
-  content: "📱";
-  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
-}
-
-.fa-phone:after {
-  content: "📞";
-  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
-}
-
-.fa-key:after {
-  content: "🔑";
-  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
-}
-
-.fa-trash:after {
-  content: "🗑️";
-  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
-}
-
-.fa-user:after {
-  content: "👤";
-  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
-}
-
-.fa-lock:after {
-  content: "🔒";
-  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
-}
-
-.fa-plus:after {
-  content: "➕";
-  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
-}
-
-.fa-save:after {
-  content: "💾";
-  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
-}
-
-.fa-refresh:after {
-  content: "🔄";
-  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
-}
-
-.fa-play:after {
-  content: "▶️";
-  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
-}
-
-.fa-pencil:after {
-  content: "✏️";
-  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
-}
-
-.fa-chevron-left:after {
-  content: "◀️";
-  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
-}
-
-.fa-chevron-right:after {
-  content: "▶️";
-  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
-}
-
-/* Font Awesome yüklenmediyse emoji'leri göster */
-@supports not (font-family: "Font Awesome 6 Free") {
-  .fa:before {
-    display: none !important;
-  }
-  
-  .fa:after {
-    display: inline-block !important;
-    font-size: 14px;
-  }
-}
+/* Sade fallback simgeler (emoji yerine text) */
+.fa-telegram:empty:after { content: "T"; font-weight: bold; }
+.fa-phone:empty:after { content: "P"; font-weight: bold; }
+.fa-key:empty:after { content: "K"; font-weight: bold; }
+.fa-trash:empty:after { content: "X"; font-weight: bold; }
+.fa-user:empty:after { content: "U"; font-weight: bold; }
+.fa-lock:empty:after { content: "L"; font-weight: bold; }
+.fa-plus:empty:after { content: "+"; font-weight: bold; }
+.fa-save:empty:after { content: "S"; font-weight: bold; }
+.fa-refresh:empty:after { content: "R"; font-weight: bold; }
+.fa-play:empty:after { content: "►"; font-weight: bold; }
+.fa-pencil:empty:after { content: "E"; font-weight: bold; }
+.fa-chevron-left:empty:after { content: "◄"; font-weight: bold; }
+.fa-chevron-right:empty:after { content: "►"; font-weight: bold; }
 
 /* Simgelerin kesinlikle görünmesini sağla - En güçlü kurallar */
 .fa, .fas, .far, .fab, .fal {
